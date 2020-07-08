@@ -21,6 +21,9 @@ GOPATH ?= $(shell go env GOPATH)
 
 all: go-generate go-build go-test go-fmtcheck go-vet golangci-lint-run check-license-header
 
+all-and-cover: all go-cover-with-race-check
+	#
+
 go-generate: 
 	$(GO) generate ./...
 
@@ -39,6 +42,15 @@ go-install:
 
 go-fmtcheck:
 	bash "$(CURDIR)/build/gofmtcheck.sh"
+
+go-cover-with-race-check:
+	go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+go-cover-with-race-check-show-html: go-cover-with-race-check
+	go tool cover -html=coverage.txt
+
+godoc-at-port9999:
+	$(GOPATH)/bin/godoc -http=localhost:9999 -links=true -notes=TODO
 
 golangci-lint-run:
 	bash "$(CURDIR)/build/install-golangci-lint.sh"

@@ -61,7 +61,9 @@ func (spec *cmdStubbingSpec) cleanUp() {
 	if nil != spec.resetDiscoverySetup {
 		spec.resetDiscoverySetup()
 	}
-	spec.comChannel.Close()
+	if spec.comChannel != nil {
+		spec.comChannel.Close()
+	}
 	os.Remove(spec.instDirStruct.homeDir)
 }
 
@@ -169,6 +171,10 @@ func (stubber *ExecStubber) WhenExecDoStubFunc(
 		resetDiscoverySetup: resetDiscoverySetup,
 	}
 	stubber.cmdStabStore[stubKey] = &spec
+	if settings.InModStatic() {
+		// No need for a communication channel for static outcome
+		return stubKey, nil
+	}
 	//TODO setup com channel only for dynamic mode
 	comChannel, err := ipc.NewStubbingComChannel(instDirStruct.execPath)
 	if err != nil {

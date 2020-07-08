@@ -17,7 +17,6 @@ module github.com/congop/execstub
 go 1.14
 
 require (
-	github.com/client9/misspell v0.3.4 // indirect
 	github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b
 	github.com/pkg/errors v0.9.1
 	github.com/smartystreets/goconvey v1.6.4 // indirect

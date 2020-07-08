@@ -38,3 +38,6 @@ jobs:
 
     - name: Build Execstub
       run: make
+
+    - name: Generage Execstub code coverage
+      run: make go-cover-with-race-check

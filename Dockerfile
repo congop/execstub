@@ -54,4 +54,4 @@ COPY . ./
 #RUN base64 --help
 #RUN date --version
 
-RUN make
+RUN make all-and-cover

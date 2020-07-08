@@ -56,19 +56,15 @@ func (comChannel *StubbingComChannel) CleanUp() {
 func (comChannel *StubbingComChannel) Close() {
 	if comChannel.StubRequestChan != nil {
 		close(comChannel.StubRequestChan)
-		comChannel.StubRequestChan = nil
 	}
 	if comChannel.ExecResponseChan != nil {
 		close(comChannel.ExecResponseChan)
-		comChannel.ExecResponseChan = nil
 	}
 	if comChannel.stubberPipeRwc != nil {
 		comChannel.stubberPipeRwc.Close()
-		comChannel.stubberPipeRwc = nil
 	}
 	if comChannel.testProcessHelperPipeRwc != nil {
 		comChannel.testProcessHelperPipeRwc.Close()
-		comChannel.testProcessHelperPipeRwc = nil
 	}
 }
 
@@ -149,7 +145,7 @@ func NewStubbingComChannel(path string) (comChannel *StubbingComChannel, err err
 			if nil != errd {
 				log.Printf(
 					"Failed to read from test process pipe:%s, err:%v",
-					comChannel.StubberPipePath, errd)
+					stubberPipePath, errd)
 				return
 			}
 
