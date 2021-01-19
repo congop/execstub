@@ -71,3 +71,7 @@ tools:
 all-clean-room:
 	# docker run --rm -v "$(CURDIR)":/usr/src/myapp -w /usr/src/myapp golang:1.14 make
 	docker build .
+
+git-log-with-pseudo-version:
+	TZ=UTC git  log   --quiet   --abbrev=12   --date='format-local:%Y%m%d%H%M%S' \
+		--pretty="%Cgreen%cn#%H@%ci ---> v0.0.0-%cd-%h %n%B" --summary
