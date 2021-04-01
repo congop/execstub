@@ -232,3 +232,76 @@ func testNamePart(s comproto.Settings) string {
 		"_" + string(s.ExecType) + "_" + string(s.Mode) +
 		"_" + s.TestHelperProcessMethodName
 }
+
+func Test_NoReEntrantLockingSoThatStubberCanBeReused(t *testing.T) {
+	// one stubber for multiple sub-tests so that we can test re-usability
+	stubber := NewExecStubber()
+	defer stubber.CleanUp()
+	settings := comproto.SettingsDynaStubCmdDiscoveredByPath()
+
+	type args struct {
+		stubFunc comproto.StubFunc
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "Should pickup the status done and return error free",
+			args: args{
+				stubFunc: comproto.AdaptOutcomesToCmdStub([]*comproto.ExecOutcome{
+					{
+						Key: "", ExitCode: 0, Stderr: "", Stdout: "Value: status: done", InternalErrTxt: "",
+					},
+				}, true),
+			},
+		},
+		{
+			name: "Should pickup static error and return with error",
+			args: args{
+				stubFunc: comproto.AdaptOutcomesToCmdStub([]*comproto.ExecOutcome{
+					{
+						Key: "", ExitCode: 0, Stderr: "", Stdout: "Value: status: error", InternalErrTxt: "",
+					},
+				}, true),
+			},
+		},
+		{
+			name: "Should timeout",
+			args: args{
+				stubFunc: comproto.AdaptOutcomesToCmdStub([]*comproto.ExecOutcome{
+					{
+						Key: "", ExitCode: 0, Stderr: "", Stdout: "Value: status: running", InternalErrTxt: "",
+					},
+				}, true),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			//settings := comproto.SettingsDynaStubCmdDiscoveredByPath()
+
+			stubFunc, reqs := comproto.RecordingExecutions(tt.args.stubFunc)
+			_, err := stubber.WhenExecDoStubFunc(stubFunc, "MySuperCmd", *settings)
+			if err != nil {
+				t.Errorf("Failed  to mock cmd MySuperCmd: %v", err)
+				return
+			}
+
+			///////////
+			cmd := exec.Command("MySuperCmd")
+			// err := cmd.Run()
+			actualBytes, err := cmd.Output()
+			expected := tt.args.stubFunc(comproto.StubRequest{}).Stdout
+			actual := string(actualBytes)
+			if (err != nil) || expected != actual {
+				t.Errorf(
+					"unexpected cmd execution outcome "+
+						"\n\terror=%v \n\tcmd=%v \n\treqs=%#v \n\texpected=%s \n\tactual=%s \n\tsuccess=%d",
+					err, cmd, reqs, expected, actual, cmd.ProcessState.ExitCode(),
+				)
+			}
+
+		})
+	}
+}

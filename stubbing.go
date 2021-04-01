@@ -141,7 +141,7 @@ func (stubber *ExecStubber) WhenExecDoStubFunc(
 	//So we can just replace the stored cmdStub if already in place
 	if spec, ok := stubber.cmdStabStore[stubKey]; ok {
 		log.Printf("[Warning] discarding old stub setting:%s %v", stubKey, spec)
-		stubber.Unregister(stubKey)
+		stubber.unregisterNotThreadSafe(stubKey)
 	}
 
 	//register
@@ -218,10 +218,14 @@ func isPath(testee string) bool {
 
 // Unregister remove the stubbing spec associated with the given key.
 func (stubber *ExecStubber) Unregister(key string) {
-	log.Println("Unregistering key=", key)
 	stubber.mutex.Lock()
 	defer stubber.mutex.Unlock()
 
+	stubber.unregisterNotThreadSafe(key)
+}
+
+func (stubber *ExecStubber) unregisterNotThreadSafe(key string) {
+	log.Println("Unregistering key=", key)
 	spec, ok := stubber.cmdStabStore[key]
 	if ok {
 		delete(stubber.cmdStabStore, key)
