@@ -138,7 +138,7 @@ func outcomeFromTestHelperProcess(
 	if err != nil {
 
 		if _, ok := err.(*exec.ExitError); ok {
-			//Cmd run but exited with non zero exit code
+			// Cmd run but exited with non zero exit code
 			// We are ok with that, as it is the actual command execution outcome
 			// the command parent should merely return the child process exit code
 			return uint8(cmd.ProcessState.ExitCode()), nil

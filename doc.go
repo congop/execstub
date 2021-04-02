@@ -151,4 +151,4 @@ or some sort of <HOME>+<Bin> configuration.
 */
 package execstub
 
-//TODO use https://godoc.org/bitbucket.org/avd/go-ipc/fifo as fifo implementation
+// TODO use https://godoc.org/bitbucket.org/avd/go-ipc/fifo as fifo implementation

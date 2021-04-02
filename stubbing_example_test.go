@@ -47,7 +47,7 @@ func Example_dynamicDefaultSettings() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "should have hat successful execution")
 
-	//accessing and checking stubrequest dynymic mode
+	// accessing and checking stubrequest dynymic mode
 	gotRequests := *reqStore
 	wanRequets := []comproto.StubRequest{
 		{
@@ -56,7 +56,7 @@ func Example_dynamicDefaultSettings() {
 	}
 	ifNotEqPanic(wanRequets, gotRequests, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr")
 
@@ -69,7 +69,7 @@ func Example_dynamicDefaultSettings() {
 	// Output:
 }
 
-//used as test process help Settings{TestHelperProcessMethodName: "TestHelperProcExample_dynamic"}
+// used as test process help Settings{TestHelperProcessMethodName: "TestHelperProcExample_dynamic"}
 func TestHelperProcExample_dynamic(t *testing.T) {
 	comproto.EffectuateConfiguredExecOutcome(nil)
 }
@@ -92,7 +92,7 @@ func Example_dynamicWithTestHelperProc() {
 	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "docker", setting)
 	ifNotEqPanic(nil, err, "fail to setip stub")
 
-	//args := []string{"image", "ls", "--format", "\"{{.Repository}}:{{.Tag}}\""}
+	// args := []string{"image", "ls", "--format", "\"{{.Repository}}:{{.Tag}}\""}
 	args := []string{"image", "ls", "--format", "table '{{.Repository}}:{{.Tag}}'"}
 	cmd := exec.Command("docker", args...)
 	var bufStderr, bufStdout bytes.Buffer
@@ -103,7 +103,7 @@ func Example_dynamicWithTestHelperProc() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "exit code set to 0 ==> execution should succeed")
 
-	//accessing and checking stubrequest dynymic mode
+	// accessing and checking stubrequest dynymic mode
 	gotRequests := *reqStore
 	wanRequets := []comproto.StubRequest{
 		{
@@ -112,7 +112,7 @@ func Example_dynamicWithTestHelperProc() {
 	}
 	ifNotEqPanic(wanRequets, gotRequests, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr")
 
@@ -142,7 +142,6 @@ func Example_static() {
 		[]comproto.StubRequest{{}}, *reqStore,
 		"Static mod evaluate StubFunc at setup with nil arg")
 	*reqStore = (*reqStore)[:0]
-	//recStubFunc(comproto.StubRequest{Key: "xxx"})
 
 	cmd := exec.Command("SuperExe", "arg1", "argb")
 	var bufStderr, bufStdout bytes.Buffer
@@ -152,7 +151,7 @@ func Example_static() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "should have hat successful execution")
 
-	//accessing and checking stubrequest static mode
+	// accessing and checking stubrequest static mode
 	ifNotEqPanic(0, len(*reqStore), "Unexpected StubFunc call in static mode")
 	gotRequests, err := stubber.FindAllPersistedStubRequests(key)
 	ifNotEqPanic(nil, err, "fail to find all persisted stub request")
@@ -163,7 +162,7 @@ func Example_static() {
 	}
 	ifNotEqPanic(wanRequets, *gotRequests, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr")
 
@@ -176,12 +175,12 @@ func Example_static() {
 	// Output:
 }
 
-//TestHelperProcExample_static is used as test process help .
+// TestHelperProcExample_static is used as test process help .
 // Configured wihh: Settings{TestHelperProcessMethodName: "TestHelperProcExample_static"}
 func TestHelperProcExample_static(t *testing.T) {
 	extraJobOnStubRequest := func(req comproto.StubRequest) error {
-		//some extrat side effect
-		//we are adding to stdout
+		// some extrat side effect
+		// we are adding to stdout
 		fmt.Print("extra_side_effect_")
 		return nil
 	}
@@ -217,7 +216,7 @@ func Example_staticWithTestHelperProc() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "should have hat successful execution")
 
-	//accessing and checking stubrequest static mode
+	// accessing and checking stubrequest static mode
 	ifNotEqPanic(0, len(*reqStore), "Unexpected StubFunc call in static mode")
 	gotRequests, err := stubber.FindAllPersistedStubRequests(key)
 	ifNotEqPanic(nil, err, "fail to find all persisted stub request")
@@ -228,7 +227,7 @@ func Example_staticWithTestHelperProc() {
 	}
 	ifNotEqPanic(wanRequets, *gotRequests, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr")
 
@@ -272,7 +271,7 @@ func Example_homeBinDir() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "should have hat successful execution")
 
-	//accessing and checking stubrequest dynymic mode
+	// accessing and checking stubrequest dynymic mode
 
 	wantRequests := []comproto.StubRequest{
 		{
@@ -281,7 +280,7 @@ func Example_homeBinDir() {
 	}
 	ifNotEqPanic(wantRequests, *reqStore, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr //stdout:"+bufStdout.String())
 

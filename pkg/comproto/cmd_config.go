@@ -184,8 +184,8 @@ func findLatestFileWithPrefix(cmdPathPrefix string) (latestPathHavingThisPrefix 
 		for _, c := range paths {
 			stat, err := os.Stat(c)
 			if err != nil {
-				//some how we cannot access this file information
-				//possible cause: access denied
+				// some how we cannot access this file information
+				// possible cause: access denied
 				// what ever the cause, this file does not exists for us
 				// therefore not considering it
 				// not print out to avoid polluting std-out/err and mixing with actual stubbing outcome
@@ -207,7 +207,6 @@ func (cfg CmdConfig) UseTestHelperProcess() bool {
 
 // UseDynamicOutcome tells whether the use of dynamic outcome is configured.
 func (cfg CmdConfig) UseDynamicOutcome() bool {
-	//return "" != cfg.PipeStubber || "" != cfg.PipeTestHelperProcess
 	return !cfg.UseStaticOutCome()
 }
 

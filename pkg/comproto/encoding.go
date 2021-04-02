@@ -207,7 +207,7 @@ func stubRequestDecoderFuncBase64CVS(reader io.Reader) (*StubRequest, error) {
 		return nil, err
 	}
 	if recLen := len(rec); recLen > 2 {
-		//because we will be using asignment to transfer rec to args
+		// because we will be using asignment to transfer rec to args
 		// we need an array with the appopriate length
 		args := make([]string, recLen-2)
 		for i := recLen - 1; i >= 2; i-- {

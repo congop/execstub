@@ -60,7 +60,7 @@ func AdaptOutcomesToCmdStub(
 	return AdaptFuncsToCmdStub(funcs, repeatLast)
 }
 
-//AdaptFuncsToCmdStub returns a CmdStub which will use a list of function to procudes the execution outcomes.
+// AdaptFuncsToCmdStub returns a CmdStub which will use a list of function to procudes the execution outcomes.
 func AdaptFuncsToCmdStub(
 	stubFuncs []StubFunc,
 	repeatLast bool,

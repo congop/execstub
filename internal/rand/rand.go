@@ -28,10 +28,14 @@ func init() {
 // NextRandInt63AsHexStr returns the next non-negative pseudo-random 63-bit
 // integer as hex string.
 func NextRandInt63AsHexStr() string {
-	return strconv.FormatInt(rand.Int63(), 16)
+	// we are okay with weak randon number generator,
+	// since we are just randomizing file names
+	return strconv.FormatInt(rand.Int63(), 16) // #nosec G404
 }
 
 // NextUint16 returns the next non-negative pseudo-random integer in uint16 range.
 func NextUint16() uint16 {
-	return uint16(rand.Intn(math.MaxUint16))
+	// we are okay with weak randon number generator,
+	// since we are just randomizing file names
+	return uint16(rand.Intn(math.MaxUint16)) // #nosec G404
 }

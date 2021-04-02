@@ -175,7 +175,7 @@ func effectuateStaticOutcome(
 	defer os.Exit(int(exitCode))
 }
 
-//EffectuateDynamicOutcome uses IPC to request execution outcome from running test.
+// EffectuateDynamicOutcome uses IPC to request execution outcome from running test.
 func EffectuateDynamicOutcome(
 	timeout time.Duration,
 	pipePathStubber string,
@@ -224,7 +224,7 @@ func ReadStubbingResponseFromNamedPipe(pipePath string, timeout time.Duration) (
 	outcomeChan := make(chan interface{}, 1)
 
 	go func() {
-		//go-func because both fifo2.OpenFifo(..) and dec.Decode(..) may block
+		// go-func because both fifo2.OpenFifo(..) and dec.Decode(..) may block
 		ctx := context.Background()
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		reader, err := fifo2.OpenFifo(ctx, pipePath, syscall.O_RDONLY, os.ModeNamedPipe)

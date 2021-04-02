@@ -98,7 +98,7 @@ func Test_stubExecutableWith(t *testing.T) {
 				cmdToStub: "BlaBlaExe",
 				cmdStub: func(sreq comproto.StubRequest) *comproto.ExecOutcome {
 					t.Logf("Stubbing CMD: %v", sreq)
-					//return "OutOk", "ErrOk", 0, nil
+					// return "OutOk", "ErrOk", 0, nil
 					return &comproto.ExecOutcome{
 						Key: sreq.Key, ExitCode: 0, Stderr: "ErrOk%s", Stdout: "OutOk%s",
 						InternalErrTxt: "",
@@ -159,8 +159,8 @@ func Test_stubExecutableWith(t *testing.T) {
 		},
 	}
 
-	//test discovery settings must be passed to unStubbableExecCommandExecution
-	//alreadyRun := false
+	// test discovery settings must be passed to unStubbableExecCommandExecution
+	// alreadyRun := false
 	for _, setDiscoveredByFunc := range setDiscoveredByFuncs {
 		setDiscoveredByFunc()
 
@@ -184,7 +184,6 @@ func Test_stubExecutableWith(t *testing.T) {
 						// Make sure code can handle repeated execution
 						unStubbableExecCommandExecution(
 							t, settings, tt.args.cmdToStub, tt.args.cmdArgs[0]...)
-						//time.Sleep(time.Millisecond * 1000)
 						outcome := unStubbableExecCommandExecution(
 							t, settings, tt.args.cmdToStub, tt.args.cmdArgs[1]...)
 						///
@@ -279,7 +278,7 @@ func Test_NoReEntrantLockingSoThatStubberCanBeReused(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			//settings := comproto.SettingsDynaStubCmdDiscoveredByPath()
+			// settings := comproto.SettingsDynaStubCmdDiscoveredByPath()
 
 			stubFunc, reqs := comproto.RecordingExecutions(tt.args.stubFunc)
 			_, err := stubber.WhenExecDoStubFunc(stubFunc, "MySuperCmd", *settings)
@@ -288,9 +287,8 @@ func Test_NoReEntrantLockingSoThatStubberCanBeReused(t *testing.T) {
 				return
 			}
 
-			///////////
+			// /////////
 			cmd := exec.Command("MySuperCmd")
-			// err := cmd.Run()
 			actualBytes, err := cmd.Output()
 			expected := tt.args.stubFunc(comproto.StubRequest{}).Stdout
 			actual := string(actualBytes)

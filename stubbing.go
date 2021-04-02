@@ -39,7 +39,7 @@ type cmdStubbingSpec struct {
 	resetDiscoverySetup func()
 }
 
-//ExecStubber provides a mechanism to stub command executions.
+// ExecStubber provides a mechanism to stub command executions.
 type ExecStubber struct {
 	cmdStabStore map[string]*cmdStubbingSpec
 	mutex        sync.Mutex
@@ -51,7 +51,7 @@ func (stubber *ExecStubber) CleanUp() {
 	stubber.mutex.Lock()
 	defer stubber.mutex.Unlock()
 	for _, spec := range stubber.cmdStabStore {
-		//TODO donot let some panicking prevent attempts to cleanup every spec
+		// TODO donot let some panicking prevent attempts to cleanup every spec
 		spec.cleanUp()
 	}
 	stubber.cmdStabStore = nil
@@ -136,15 +136,15 @@ func (stubber *ExecStubber) WhenExecDoStubFunc(
 	//  - random parts
 	stubKey := fmt.Sprint(cmdToStubStrimmed, "_", strconv.Itoa(os.Getpid()))
 
-	//Because we will be teaking environment PATH and executable home we are limited to
-	//one stubbing configuration for a given command per test process
-	//So we can just replace the stored cmdStub if already in place
+	// Because we will be teaking environment PATH and executable home we are limited to
+	// one stubbing configuration for a given command per test process
+	// So we can just replace the stored cmdStub if already in place
 	if spec, ok := stubber.cmdStabStore[stubKey]; ok {
 		log.Printf("[Warning] discarding old stub setting:%s %v", stubKey, spec)
 		stubber.unregisterNotThreadSafe(stubKey)
 	}
 
-	//register
+	// register
 	if isPath(cmdToStub) {
 		// we will not stub cmd defined by absolute or relatif path
 		// because this will involve overriding it or changing current dir
@@ -175,7 +175,7 @@ func (stubber *ExecStubber) WhenExecDoStubFunc(
 		// No need for a communication channel for static outcome
 		return stubKey, nil
 	}
-	//TODO setup com channel only for dynamic mode
+	// TODO setup com channel only for dynamic mode
 	comChannel, err := ipc.NewStubbingComChannel(instDirStruct.execPath)
 	if err != nil {
 		spec.cleanUp()
@@ -195,8 +195,8 @@ func (stubber *ExecStubber) WhenExecDoStubFunc(
 				return
 			}
 			log.Printf("Stubbing requested:%#v", req)
-			//Not using closure cmdStub because store cmdToStub can be removed
-			//Using closure spec directly cannot detect the removal.
+			// Not using closure cmdStub because store cmdToStub can be removed
+			// Using closure spec directly cannot detect the removal.
 			//	- therefore using <central locking> through doStub(..)
 			resp := stubber.doStub(*req)
 			if resp.InternalErrTxt != "" {
@@ -442,8 +442,8 @@ func createStubExecFile(
 	instExecInstStruct *stubExecInstallationDirStructure,
 	execType comproto.ExecType,
 ) (err error) {
-	//stubExecDir string
-	//stubCommandPath = filepath.Join(stubExecDir, cmdToStub)
+	// stubExecDir string
+	// stubCommandPath = filepath.Join(stubExecDir, cmdToStub)
 	stubCommandPath := instExecInstStruct.execPath
 	execStubProvider := toExecStubProvider(execType)
 	execStubBytes, err := execStubProvider()
