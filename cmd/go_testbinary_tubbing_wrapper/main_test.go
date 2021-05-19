@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/congop/execstub/internal/fifo"
 	"github.com/congop/execstub/internal/ipc"
 	comproto "github.com/congop/execstub/pkg/comproto"
 
@@ -60,7 +61,7 @@ func Test_runStubbingExec(t *testing.T) {
 				cmdArgs: []string{"arg1", "argb"},
 				cmdConfig: comproto.CmdConfig{
 					CmdToStub:               "Exe1",
-					StubKey:                 "Exe19876",
+					StubKey:                 "Exe1_9876",
 					UnitTestExec:            os.Args[0],
 					TestHelperProcessMethod: "TestProcHelperConfiguredOutcome",
 					ExitCode:                0,
@@ -85,7 +86,7 @@ func Test_runStubbingExec(t *testing.T) {
 				cmdArgs: []string{"arg1", "argb"},
 				cmdConfig: comproto.CmdConfig{
 					CmdToStub:               "Exe1",
-					StubKey:                 "Exe19876",
+					StubKey:                 "Exe1_9876",
 					UnitTestExec:            os.Args[0],
 					TestHelperProcessMethod: "TestProcHelperAltOutcome",
 					ExitCode:                0,
@@ -110,7 +111,7 @@ func Test_runStubbingExec(t *testing.T) {
 				cmdArgs: []string{"arg1", "argb"},
 				cmdConfig: comproto.CmdConfig{
 					CmdToStub:               "Exe2",
-					StubKey:                 "Exe29876",
+					StubKey:                 "Exe2_9876",
 					UnitTestExec:            os.Args[0],
 					TestHelperProcessMethod: "",
 					ExitCode:                33,
@@ -136,7 +137,7 @@ func Test_runStubbingExec(t *testing.T) {
 				cmdArgs: []string{"arg1", "argb"},
 				cmdConfig: comproto.CmdConfig{
 					CmdToStub:               "Exe3",
-					StubKey:                 "Exe39876",
+					StubKey:                 "Exe3_9876",
 					UnitTestExec:            os.Args[0],
 					TestHelperProcessMethod: "",
 					ExitCode:                nil,
@@ -162,7 +163,7 @@ func Test_runStubbingExec(t *testing.T) {
 				cmdArgs: []string{"arg1", "argb"},
 				cmdConfig: comproto.CmdConfig{
 					CmdToStub:               "Exe3",
-					StubKey:                 "Exe39876",
+					StubKey:                 "Exe3_9876",
 					UnitTestExec:            os.Args[0],
 					TestHelperProcessMethod: "TestProcHelperConfiguredOutcome",
 					ExitCode:                nil,
@@ -204,12 +205,12 @@ func Test_runStubbingExec(t *testing.T) {
 			if comChannel != nil {
 				go func() {
 					req, ok := <-comChannel.StubRequestChan
-					reqCopy := *req
-					gotRequest = &reqCopy
 					t.Logf("Received (%t) request:%v", ok, req)
 					if !ok {
 						return
 					}
+					reqCopy := *req
+					gotRequest = &reqCopy
 					resp := tt.wantOutcome
 					comChannel.ExecResponseChan <- &resp
 				}()
@@ -312,7 +313,8 @@ func createTmpDirWithCmdAndConfig(
 	stubExecPath = filepath.Join(dir, testConfig.CmdToStub)
 
 	if createComChannel {
-		comChannel, err = ipc.NewStubbingComChannel(stubExecPath)
+		stubberPipePath, testProcessHelperPipePath := fifo.NewFifoNamesForIpc(stubExecPath)
+		comChannel, err = ipc.NewStubbingComChannel(stubberPipePath, testProcessHelperPipePath)
 		if err != nil {
 			t.Errorf("Error creating com channel: %s %##v", err.Error(), err)
 			return

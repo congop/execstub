@@ -41,7 +41,7 @@ func deduplicatePath(pathAsString, separator string) (deduplicatedPath string) {
 	deduplicatedPathParts := make([]string, 0, len(splits))
 	alreadyAdded := map[string]string{}
 	for _, split := range splits {
-		if _, ok := alreadyAdded[split]; ok {
+		if _, ok := alreadyAdded[split]; ok || split == "" {
 			continue
 		}
 		deduplicatedPathParts = append(deduplicatedPathParts, split)

@@ -17,13 +17,13 @@ based on an executable discovered using the environment <PATH>
 or some sort of <HOME>+<Bin> configuration.
 
   - What is a usage of a command line api?
-    Its when you spawn a sub-process using a programming language api.
+    Its when you spawn a sub-process using a programming language API.
     Think go exec.Cmd.Run(..), java Runtime.exec(..), python subprocess.run(..).
-    The sub-process execution wil yield an outcome consisting of:
+    The sub-process execution will yield an outcome consisting of:
  		  - side effects (e.g. a file created when executing touch).
       - bytes or string in std-out and/or std-err.
       - an exit code.
-    The executed binary is tipically specified using a path like argument.
+    The executed binary is typically specified using a path like argument.
     It can be:
       - a absolute path
       - a relative path
@@ -40,7 +40,7 @@ or some sort of <HOME>+<Bin> configuration.
     - name of the binary
       a file with that name will be search in the directories specified
       by the PATH environment variable. The first found will be used.
-      On some platforms known and specified file exetensions (e.g. .exe) will be appended
+      On some platforms known and specified file extensions (e.g. .exe) will be appended
       to the name during the search.
     Even when using absolute paths, you may decide to put a customization strategy
     using some process environment variable. We call this the home-bin-dir strategy.
@@ -54,7 +54,7 @@ or some sort of <HOME>+<Bin> configuration.
     is discovered instead of the actual one.
     It is the case if binary is specified by name and discovered using PATH or
     when absolute path is used but with a customization layer in place based
-    on defined environement home variable.
+    on defined environment home variable.
     The mechanism will just have to mutate the PATH or set the home variable accordingly.
     Stubbing become complicated if the specification is based on absolute (without customization
     layer) or relative path because it will require e.g.:
@@ -65,10 +65,10 @@ or some sort of <HOME>+<Bin> configuration.
     The execstub module will therefore only provide stubbing for PATH and Home-Bin-Dir based discovery.
 
   - Design elements
-    - Modelling the command line usage
+    - Modeling the command line usage
       We have basically 3 aspects to model:
         - Starting the process
-          It is modelled using StubRequest which hold the the command name and the
+          It is modeled using StubRequest which hold the the command name and the
           execution argument so that the fake execution process can be function of them.
 
         - Execution
@@ -77,23 +77,23 @@ or some sort of <HOME>+<Bin> configuration.
           It may also be desirale to have some side effects, e.g.:
             - related to the execution itself like creating a file
             - or related to the unit-test as counting the number of calls
-          In other constelations the outocme may requires some computation to determine
+          In other constellations the outocome may requires some computation to determine
           stderr/stdout/exicode as function of the request.
           We refer to these cases as dynamic mode.
           The execution is therefore modelled as function namely StubFunc.
           Thus, if required the StubFunc corresponding to the current stubbing will be looked-up and run.
 
         - Outcome
-          The stderr/stdout/exit-code part of the outcome is modelled as ExecOutcome.
+          The stderr/stdout/exit-code part of the outcome is modeled as ExecOutcome.
           The execution the the stubfunc may result however in an error.
-          Such error is not an actual sub-process execution erronuous outcome.
-          It therefore must be modelled separately as opposed to be added to stderr
+          Such error is not an actual sub-process execution erroneous outcome.
+          It therefore must be modeled separately as opposed to be added to stderr
           and setting a non-zero exit code.
           Such and error can be communicated by using the ExecOutcome field InternalErrTxt.
 
     - Stub-Executable
       It is the fake executable used to effectuate the overall outcome.
-      It may realise the outcome by itself. It may also cooperate with a test helper
+      It may release the outcome by itself. It may also cooperate with a test helper
       to achieve the outcome. The following command line is used:
       /tmp/go-build720053430/b001/xyz.test -test.run=TestHelperProcess -- arg1 arg2 arg3
       It is not possible to use the test helper directly because we will need to inject
@@ -107,7 +107,7 @@ or some sort of <HOME>+<Bin> configuration.
       alongside the executable.
 
     - Inter process communication (IPC) to support dynamic outcomes
-      The invokation  of a StubFunc to produce a dynamic outcome is done in the unit test process.
+      The invocation  of a StubFunc to produce a dynamic outcome is done in the unit test process.
       There is no means to access the stub function directly from the fake process execution.
       IPC is used here to allow the fake process to issue a StubRequest  and receive an ExecOutcome.
       The Serialization/Deserialization mechanism needed for IPC must be understood
@@ -122,21 +122,21 @@ or some sort of <HOME>+<Bin> configuration.
       An ExecStubber is provided to manage the stubbing setup.
       Its key feature is to setup an invokation of a StubFunc to replace the execution
       of a process, See ExecStubber.WhenExecDoStubFunc(...).
-      It allows a baterie of settings beyond the basic requirement of specifying
+      It allows settings beyond the basic requirement of specifying
       the executable to be stubbed and a StubFunc replacement.
-      This is modelled using Settings, which provides the following configuration options:
+      This is modeled using Settings, which provides the following configuration options:
         - Selecting and customizing the discovery mode (PATH vs. Home-Bin-Dir)
         - Selecting the stub executable (Bash vs. Exec(go based))
-        - Seclecting the stubbing mode (static vs. dynamic)
+        - Selecting the stubbing mode (static vs. dynamic)
         - Specifying the test process helper method name
         - specifying a timeout  for a stub sub-process execution
       A stubbing setup is identified by a key.
       The key can be use to:
-        - unwind the setup(Unregister)
+        - unwind the setup(Unregister(..))
         - access the stubbing data basis of static requests
           (FindAllPersistedStubRequests, DeleteAllPersistedStubRequests ).
 
-    - Conccurency and parallelism
+    - Concurrency and parallelism
       The mutation of the process environment is the key enabling mechanism of Execstub.
       The process environment must therefore be guarded against issues of concurrency
       and parallelism. This also mean that is not possible to have a parallel stubbing
@@ -144,8 +144,8 @@ or some sort of <HOME>+<Bin> configuration.
       non-deterministic because the setting will likely override each other.
       ExecStubber provides a locking mechanism to realize the serialization of the mutation of environment.
       For this to work correctly however there must only be one ExecStubber per unit test process.
-      Note that the code under test can still execute its sub-processes concurently or in parallel.
-      The correctnes of the outcome here dependents on the implementation of the StubFunc
+      Note that the code under test can still execute its sub-processes concurrently or in parallel.
+      The correctness of the outcome here dependents on the implementation of the StubFunc
       function being used. Static outcomes without side effect are of course always deterministic.
 
 */

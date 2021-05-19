@@ -12,16 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-module github.com/congop/execstub
+package runtime
 
-go 1.14
+import "runtime"
 
-require (
-	github.com/containerd/fifo v0.0.0-20200410184934-f15a3290365b
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/pkg/errors v0.9.1
-	github.com/smartystreets/goconvey v1.6.4 // indirect
-	github.com/stretchr/testify v1.6.1
-	golang.org/x/sys v0.0.0-20210412220455-f1c623a9e750 // indirect
-	gopkg.in/ini.v1 v1.57.0
-)
+func IsWindows() bool {
+	return runtime.GOOS == "windows"
+}

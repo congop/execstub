@@ -20,6 +20,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"text/template"
@@ -42,6 +43,22 @@ type CmdConfig struct {
 	PipeTestHelperProcess   string
 	Timeout                 OptionalDuration
 	DataDir                 string
+}
+
+func assertStubKeyHasRightFormat(key string, mesg string) error {
+	if len(key) > 0 {
+		splits := strings.Split(key, "_")
+		if len(splits) >= 2 {
+			procID := splits[len(splits)-1]
+			_, err := strconv.ParseInt(procID, 10, 64)
+			if err == nil {
+				return nil
+			}
+		}
+	}
+	return errors.Errorf(
+		"bad stubkey:%s \n\t--\n%s\n\t------------------\n %s",
+		key, mesg, string(debug.Stack()))
 }
 
 // ExitCodeUint8 returns the configured exit code.
@@ -91,10 +108,16 @@ func CmdConfigLoadedFromFile(cmdConfigPath string) (*CmdConfig, error) {
 
 	section := cfg.Section("")
 	cmdCfg.StubKey = section.Key("__EXECSTUBBING_STUB_KEY").String()
+	err = assertStubKeyHasRightFormat(cmdCfg.StubKey, section.Body())
+	if err != nil {
+		return nil, err
+	}
 	cmdCfg.CmdToStub = section.Key("__EXECSTUBBING_CMD_TO_STUB").String()
 	cmdCfg.UnitTestExec = section.Key("__EXECSTUBBING_UNIT_TEST_EXEC").String()
 	cmdCfg.TestHelperProcessMethod = section.Key("__EXECSTUBBING_TEST_HELPER_PROCESS_METHOD").String()
 	cmdCfg.DataDir = section.Key("__EXECSTUBBING_DATA_DIR").String()
+	cmdCfg.PipeStubber = section.Key("__EXECSTUBBING_PIPE_STUBBER").String()
+	cmdCfg.PipeTestHelperProcess = section.Key("__EXECSTUBBING_PIPE_TEST_HELPER_PROC").String()
 
 	cmdCfg.TxtStdout, err = decodeBase64SectionValue(section, "__EXECSTUBBING_STD_OUT")
 	if nil != err {
@@ -106,17 +129,6 @@ func CmdConfigLoadedFromFile(cmdConfigPath string) (*CmdConfig, error) {
 	}
 
 	cmdCfg.ExitCode, err = readExitCodeAsUint8(section)
-	if err != nil {
-		return nil, err
-	}
-
-	cmdPathAbs := strings.TrimSuffix(cmdConfigPathAbs, ".config")
-
-	cmdCfg.PipeStubber, err = findLatestFileWithPrefix(cmdPathAbs + "_stubber_pipe_")
-	if err != nil {
-		return nil, err
-	}
-	cmdCfg.PipeTestHelperProcess, err = findLatestFileWithPrefix(cmdPathAbs + "_testprocesshelper_pipe_")
 	if err != nil {
 		return nil, err
 	}
@@ -164,40 +176,6 @@ func decodeBase64SectionValue(section *ini.Section, key string) (decoded string,
 		return "", errors.Wrapf(err, "fail to base64 decode sectin[%s]=%s", key, strBase64)
 	}
 	return string(decodedBytes), nil
-}
-
-func findLatestFileWithPrefix(cmdPathPrefix string) (latestPathHavingThisPrefix string, err error) {
-	pattern := cmdPathPrefix + "*"
-	paths, err := filepath.Glob(pattern)
-	if err != nil {
-		err = errors.Wrapf(err, "fail to Glob bad pattern %s", pattern)
-		return "", err
-	}
-	switch len(paths) {
-	case 1:
-		return paths[0], nil
-	case 0:
-		return "", nil
-	default:
-		path := ""
-		latestTime := time.Unix(0, 0)
-		for _, c := range paths {
-			stat, err := os.Stat(c)
-			if err != nil {
-				// some how we cannot access this file information
-				// possible cause: access denied
-				// what ever the cause, this file does not exists for us
-				// therefore not considering it
-				// not print out to avoid polluting std-out/err and mixing with actual stubbing outcome
-				continue
-			}
-			ft := stat.ModTime()
-			if ft.After(latestTime) {
-				path = c
-			}
-		}
-		return path, nil
-	}
 }
 
 // UseTestHelperProcess tells whether the use of test helper process is configured.

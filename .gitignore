@@ -1,4 +1,7 @@
 /go_testbinary_tubbing_wrapper
+/go_testbinary_tubbing_wrapper.exe
+/debug.test
 /my-local-notes.txt
 /.my-local-notes.txt.swp
 /coverage.txt
+cmd/go_testbinary_tubbing_wrapper/debug.test

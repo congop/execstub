@@ -1,6 +1,6 @@
 # Execstub
 
-Package execstub provides stubbing for a usage of a command line api which is
+Package execstub provides stubbing for a usage of a command line API which is
 based on an executable discovered using the environment <PATH>
 or some sort of <HOME>+<Bin> configuration.
 An example of command line api usage is:
@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"testing"
 
+	rt "github.com/congop/execstub/internal/runtime"
 	"github.com/congop/execstub/pkg/comproto"
 )
 
@@ -38,8 +39,8 @@ func Example_dynamicDefaultSettings() {
 	}
 	recStubFunc, reqStore := comproto.RecordingExecutions(
 		comproto.AdaptOutcomeToCmdStub(&staticOutcome))
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "SuperExe", comproto.Settings{})
-	ifNotEqPanic(nil, err, "fail to setip stub")
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("SuperExe"), comproto.Settings{})
+	ifNotEqPanic(nil, err, "fail to setup stub")
 
 	cmd := exec.Command("SuperExe", "arg1", "argb")
 	var bufStderr, bufStdout bytes.Buffer
@@ -50,16 +51,16 @@ func Example_dynamicDefaultSettings() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "should have hat successful execution")
 
-	//accessing and checking stubrequest dynymic mode
+	// accessing and checking stubrequest dynymic mode
 	gotRequests := *reqStore
 	wanRequets := []comproto.StubRequest{
 		{
-			CmdName: "SuperExe", Args: []string{"arg1", "argb"}, Key: key,
+			CmdName: rt.EnsureHasExecExt("SuperExe"), Args: []string{"arg1", "argb"}, Key: key,
 		},
 	}
 	ifNotEqPanic(wanRequets, gotRequests, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr")
 
@@ -72,7 +73,7 @@ func Example_dynamicDefaultSettings() {
 	// Output:
 }
 
-//used as test process help Settings{TestHelperProcessMethodName: "TestHelperProcExample_dynamic"}
+// used as test process help Settings{TestHelperProcessMethodName: "TestHelperProcExample_dynamic"}
 func TestHelperProcExample_dynamic(t *testing.T) {
 	comproto.EffectuateConfiguredExecOutcome(nil)
 }
@@ -92,10 +93,10 @@ func Example_dynamicWithTestHelperProc() {
 	recStubFunc, reqStore := comproto.RecordingExecutions(
 		comproto.AdaptOutcomeToCmdStub(&staticOutcome))
 	setting := comproto.Settings{TestHelperProcessMethodName: "TestHelperProcExample_dynamic"}
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "docker", setting)
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("docker"), setting)
 	ifNotEqPanic(nil, err, "fail to setip stub")
 
-	//args := []string{"image", "ls", "--format", "\"{{.Repository}}:{{.Tag}}\""}
+	// args := []string{"image", "ls", "--format", "\"{{.Repository}}:{{.Tag}}\""}
 	args := []string{"image", "ls", "--format", "table '{{.Repository}}:{{.Tag}}'"}
 	cmd := exec.Command("docker", args...)
 	var bufStderr, bufStdout bytes.Buffer
@@ -106,16 +107,16 @@ func Example_dynamicWithTestHelperProc() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "exit code set to 0 ==> execution should succeed")
 
-	//accessing and checking stubrequest dynymic mode
+	// accessing and checking stubrequest dynymic mode
 	gotRequests := *reqStore
 	wanRequets := []comproto.StubRequest{
 		{
-			CmdName: "docker", Args: args, Key: key,
+			CmdName: rt.EnsureHasExecExt("docker"), Args: args, Key: key,
 		},
 	}
 	ifNotEqPanic(wanRequets, gotRequests, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr")
 
@@ -139,13 +140,13 @@ func Example_static() {
 	recStubFunc, reqStore := comproto.RecordingExecutions(
 		comproto.AdaptOutcomeToCmdStub(&staticOutcome))
 	settings := comproto.Settings{Mode: comproto.StubbingModeStatic}
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "SuperExe", settings)
-	ifNotEqPanic(nil, err, "fail to setip stub")
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("SuperExe"), settings)
+	ifNotEqPanic(nil, err, "fail to setup stub")
 	ifNotEqPanic(
-		[]comproto.StubRequest{{}}, *reqStore,
-		"Static mod evaluate StubFunc at setup with nil arg")
+		[]comproto.StubRequest{{Key: key, CmdName: rt.EnsureHasExecExt("SuperExe"), Args: nil}},
+		*reqStore,
+		"Static mod evaluate StubFunc at setup with a stubrequest havin nil args")
 	*reqStore = (*reqStore)[:0]
-	//recStubFunc(comproto.StubRequest{Key: "xxx"})
 
 	cmd := exec.Command("SuperExe", "arg1", "argb")
 	var bufStderr, bufStdout bytes.Buffer
@@ -155,18 +156,18 @@ func Example_static() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "should have hat successful execution")
 
-	//accessing and checking stubrequest static mode
+	// accessing and checking stubrequest static mode
 	ifNotEqPanic(0, len(*reqStore), "Unexpected StubFunc call in static mode")
 	gotRequests, err := stubber.FindAllPersistedStubRequests(key)
 	ifNotEqPanic(nil, err, "fail to find all persisted stub request")
 	wanRequets := []comproto.StubRequest{
 		{
-			CmdName: "SuperExe", Args: []string{"arg1", "argb"}, Key: key,
+			CmdName: rt.EnsureHasExecExt("SuperExe"), Args: []string{"arg1", "argb"}, Key: key,
 		},
 	}
 	ifNotEqPanic(wanRequets, *gotRequests, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr")
 
@@ -179,12 +180,12 @@ func Example_static() {
 	// Output:
 }
 
-//TestHelperProcExample_static is used as test process help .
+// TestHelperProcExample_static is used as test process help .
 // Configured wihh: Settings{TestHelperProcessMethodName: "TestHelperProcExample_static"}
 func TestHelperProcExample_static(t *testing.T) {
 	extraJobOnStubRequest := func(req comproto.StubRequest) error {
-		//some extrat side effect
-		//we are adding to stdout
+		// some extrat side effect
+		// we are adding to stdout
 		fmt.Print("extra_side_effect_")
 		return nil
 	}
@@ -205,11 +206,12 @@ func Example_staticWithTestHelperProc() {
 		Mode:                        comproto.StubbingModeStatic,
 		TestHelperProcessMethodName: "TestHelperProcExample_static",
 	}
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "SuperExe", settings)
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("SuperExe"), settings)
 	ifNotEqPanic(nil, err, "fail to setip stub")
 	ifNotEqPanic(
-		[]comproto.StubRequest{{}}, *reqStore,
-		"Static mod evaluate StubFunc at setup with nil arg")
+		[]comproto.StubRequest{{Key: key, CmdName: rt.EnsureHasExecExt("SuperExe"), Args: nil}},
+		*reqStore,
+		"Static mod evaluate StubFunc at setup with stubrequest having nil args")
 	*reqStore = (*reqStore)[:0]
 
 	cmd := exec.Command("SuperExe", "arg1", "argb")
@@ -220,18 +222,18 @@ func Example_staticWithTestHelperProc() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "should have hat successful execution")
 
-	//accessing and checking stubrequest static mode
+	// accessing and checking stubrequest static mode
 	ifNotEqPanic(0, len(*reqStore), "Unexpected StubFunc call in static mode")
 	gotRequests, err := stubber.FindAllPersistedStubRequests(key)
 	ifNotEqPanic(nil, err, "fail to find all persisted stub request")
 	wanRequets := []comproto.StubRequest{
 		{
-			CmdName: "SuperExe", Args: []string{"arg1", "argb"}, Key: key,
+			CmdName: rt.EnsureHasExecExt("SuperExe"), Args: []string{"arg1", "argb"}, Key: key,
 		},
 	}
 	ifNotEqPanic(wanRequets, *gotRequests, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr")
 
@@ -260,9 +262,9 @@ func Example_homeBinDir() {
 			EnvHomeKey: "JAVA_HOME",
 			BinDirs:    []string{"bin"},
 		},
-		ExecType: comproto.ExecTypeBash,
+		ExecType: comproto.ExecTypeExe,
 	}
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "java", settings)
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("java"), settings)
 	ifNotEqPanic(nil, err, "fail to setip stub")
 
 	javaCmd := os.ExpandEnv("${JAVA_HOME}/bin/java")
@@ -275,16 +277,16 @@ func Example_homeBinDir() {
 	err = cmd.Run()
 	ifNotEqPanic(nil, err, "should have hat successful execution")
 
-	//accessing and checking stubrequest dynymic mode
+	// accessing and checking stubrequest dynymic mode
 
 	wantRequests := []comproto.StubRequest{
 		{
-			CmdName: "java", Args: []string{"-version"}, Key: key,
+			CmdName: rt.EnsureHasExecExt("java"), Args: []string{"-version"}, Key: key,
 		},
 	}
 	ifNotEqPanic(wantRequests, *reqStore, "unexpected stub requests")
 
-	//accessing and checking outcome
+	// accessing and checking outcome
 	gotStderr := bufStderr.String()
 	ifNotEqPanic(staticOutcome.Stderr, gotStderr, "unexpected stderr //stdout:"+bufStdout.String())
 
@@ -311,7 +313,7 @@ comproto.Settings.ExecType
 
 ## Alternatives:
 I believe in having options/choices. So use this package whenever you pleases.
-You should however be aware of the following alternatives to or for cli api usage:
+You should however be aware of the following alternatives to or for CLI API usage:
   - Use package variable representing the command which you can change in unit-test.
   - Build an abstraction which models the execution as a strategy.
     when unit-test just plug the fake behavior
@@ -323,23 +325,23 @@ You should however be aware of the following alternatives to or for cli api usag
 - Supported platform<br/>
   This project is been developed on Ubuntu 18.04 and tested on both ubuntu and alpine linux.
   It should work fine on any linux(-ish) system having an up-to-date bash, and coretools installed.
-  I doubt it will work on windows yet, possible reasons are:
-  - the usage of named pipe for IPC  
-    I do not think that the library which is currently used supports the windows version of name piped. 
-  - Opting to use the bash based stub executable.  
-   (bash is not a native windows tool)  
-
-  But it should be easy to make project work in windows.
+  The windows support is in experimental state. Note the following about it:
+  - Opting to use the bash based stub executable.
+   (bash is not a native windows tool and the <#!-make-it-executable> is missing)
+  - IPC not implemented with named pipes
+    Named pipes implementation in windows requires a synchronous client-server interaction flow.
+		It does not support the simple open / write mechamism as in Linux.
+		Therefore an implementation based on normal file open/write/read has been implemented instead.
 - Timeout implementation<br/>
   It is possible to set a timeout for the execution of the stubbing sub-process.
-  Please note that the inforcement of timeout is very inaccurate.
-- Parralellism and Concurrency<br/>
+  Please note that the enforcement of timeout is very inaccurate.
+- Parallelism and Concurrency<br/>
   The mutation of the process environment is the key enabling mechanism of Execstub.
-  To avoid concurency issues you must stick to one ExecStubber per test process.
-  There must at any time be one stubbing set-up for stubbing a command which is uniquely 
+  To avoid concurrency issues you must stick to one ExecStubber per test process.
+  There must at any time be one stubbing set-up for stubbing a command which is uniquely
   identified by a name.
   This does not impose a concurrency or parallelism limitation on how the code under test
-  executes sub-processes. In this case the determinism of the outcome is determined by the 
+  executes sub-processes. In this case the determinism of the outcome is determined by the
   implementation of the StubFunc, which is used to effectuate the specified outcome.
 
 ## Contributing
@@ -350,7 +352,7 @@ Here some things you could do:
 - write about it
 - give your feedback
 - reports an issue
-- suggest a missing feaure
+- suggest a missing feature
 - send pull requests (please discuss your change first by raising an issue)
 - etc.
 

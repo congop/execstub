@@ -41,18 +41,18 @@ func TestStubRequestDirRepo_Save(t *testing.T) {
 			name: "Should fail because Data dir does not exist",
 			args: args{
 				dataSubDir: filepath.Join("notsubdir1", "notsubdir2"),
-				req:        StubRequest{},
+				req:        StubRequest{Key: "legal_1233", CmdName: "legal", Args: nil},
 			},
 			wantErr: true,
 		},
 
 		{
-			name: "Should persist null stubbing request into data dir",
+			name: "Should fail because nil request does not have a legal key",
 			args: args{
 				dataSubDir: "",
 				req:        StubRequest{},
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 
 		{
@@ -62,7 +62,7 @@ func TestStubRequestDirRepo_Save(t *testing.T) {
 				req: StubRequest{
 					CmdName: "mycmd1",
 					Args:    []string{"arg0", "arg1", "argc"},
-					Key:     "kk223344",
+					Key:     "kk_223344",
 				},
 			},
 			wantErr: false,
@@ -106,6 +106,10 @@ func TestStubRequestDirRepo_Save(t *testing.T) {
 				return
 			}
 			wantReqs := []StubRequest{tt.args.req}
+			if tt.wantErr {
+				// request not written, so nothing in the repository
+				wantReqs = []StubRequest{}
+			}
 			if !reflect.DeepEqual(wantReqs, *reqs) {
 				t.Fatalf("persisted request does not match loaded request:\nwant=%#v \ngot =%#v", wantReqs, *reqs)
 			}
@@ -118,13 +122,12 @@ func TestStubRequestDirRepo_MultSaveFindAllDellAll(t *testing.T) {
 		{
 			CmdName: "mycmd1",
 			Args:    []string{"arg0", "arg1", "argc"},
-			Key:     "kk223344",
+			Key:     "kk_223344",
 		},
-		{},
 		{
 			CmdName: "mycmd1c",
 			Args:    []string{"argc0", "argc1", "argcc"},
-			Key:     "kk223344c",
+			Key:     "kkc_223344",
 		},
 	}
 

@@ -26,8 +26,10 @@ import (
 	"sync"
 
 	"github.com/congop/execstub/internal/assets"
+	"github.com/congop/execstub/internal/fifo"
 	"github.com/congop/execstub/internal/ipc"
 	"github.com/congop/execstub/internal/rand"
+	rt "github.com/congop/execstub/internal/runtime"
 	comproto "github.com/congop/execstub/pkg/comproto"
 	"github.com/pkg/errors"
 )
@@ -58,6 +60,7 @@ func (stubber *ExecStubber) CleanUp() {
 }
 
 func (spec *cmdStubbingSpec) cleanUp() {
+	log.Printf("Cleaning up cmdStubbingSpec=%v", *spec)
 	if nil != spec.resetDiscoverySetup {
 		spec.resetDiscoverySetup()
 	}
@@ -154,7 +157,7 @@ func (stubber *ExecStubber) WhenExecDoStubFunc(
 		return "", err
 	}
 
-	instDirStruct, resetDiscoverySetup, err :=
+	cmdCfg, instDirStruct, resetDiscoverySetup, err :=
 		setupStubbingExecutable(cmdStub, cmdToStubStrimmed, stubKey, settings)
 	if err != nil {
 		if nil != resetDiscoverySetup {
@@ -175,8 +178,8 @@ func (stubber *ExecStubber) WhenExecDoStubFunc(
 		// No need for a communication channel for static outcome
 		return stubKey, nil
 	}
-	// TODO setup com channel only for dynamic mode
-	comChannel, err := ipc.NewStubbingComChannel(instDirStruct.execPath)
+	// for dynamic mode
+	comChannel, err := ipc.NewStubbingComChannel(cmdCfg.PipeStubber, cmdCfg.PipeTestHelperProcess)
 	if err != nil {
 		spec.cleanUp()
 		return "", err
@@ -195,6 +198,9 @@ func (stubber *ExecStubber) WhenExecDoStubFunc(
 				return
 			}
 			log.Printf("Stubbing requested:%#v", req)
+			if req.IsRequestingStop() {
+				return
+			}
 			// Not using closure cmdStub because store cmdToStub can be removed
 			// Using closure spec directly cannot detect the removal.
 			//	- therefore using <central locking> through doStub(..)
@@ -203,7 +209,11 @@ func (stubber *ExecStubber) WhenExecDoStubFunc(
 				resp.ExitCode = math.MaxUint8
 			}
 
-			comChannel.ExecResponseChan <- resp
+			// comChannel.ExecResponseChan <- resp
+			errs := comChannel.EnqueueRespnse(resp)
+			if errs != nil {
+				log.Printf("Error enqueuing response resp=%#v req:%#v err=%v", resp, req, err)
+			}
 			log.Printf("Stubbing ExecOutcome queued resp=%#v req:%#v", resp, req)
 		}
 
@@ -274,26 +284,26 @@ func (stubber *ExecStubber) doStub(sreq comproto.StubRequest) *comproto.ExecOutc
 func setupStubbingExecutable(
 	cmdStub comproto.StubFunc, cmdToStub string, stubKey string,
 	settings comproto.Settings,
-) (instDirStruct *stubExecInstallationDirStructure, resetDiscoverySetup func(), err error) {
+) (cmdConfig *comproto.CmdConfig, instDirStruct *stubExecInstallationDirStructure, resetDiscoverySetup func(), err error) {
 
 	testExecutable := os.Args[0]
 
 	instDirStruct, err = createStubExecutableInstDirStucture(stubKey, cmdToStub, settings)
 	if nil != err {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	err = createStubExecConfigFile(
+	cmdConfig, err = createStubExecConfigFile(
 		stubKey, cmdToStub, cmdStub, settings, testExecutable, instDirStruct)
 	if nil != err {
 		os.RemoveAll(instDirStruct.homeDir)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	err = createStubExecFile(instDirStruct, settings.ExecType)
 	if nil != err {
 		os.RemoveAll(instDirStruct.homeDir)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	resetDiscoverySetup = makeExecStubBeDiscoveredInsteadOfAcualExec(instDirStruct.homeDir, settings)
@@ -301,7 +311,7 @@ func setupStubbingExecutable(
 		"Stubbing executable installation structure: \nstub instExecStrubf=%#v \nPATH=%s",
 		instDirStruct, os.Getenv("PATH"))
 
-	return instDirStruct, resetDiscoverySetup, nil
+	return cmdConfig, instDirStruct, resetDiscoverySetup, nil
 
 }
 
@@ -315,13 +325,15 @@ type stubExecInstallationDirStructure struct {
 func createStubExecutableInstDirStucture(
 	stubKey string, cmdToStub string, settings comproto.Settings,
 ) (instDirStruct *stubExecInstallationDirStructure, err error) {
-	testExecutable := os.Args[0]
-	unittestExecDir := filepath.Dir(testExecutable)
+	rt.AssertFileNameEndsWithExecExt(cmdToStub)
+	// testExecutable := os.Args[0]
+	unittestExecDir := os.TempDir()
+	// unittestExecDir := filepath.Dir(testExecutable)
 	// Concurrent stub setting should not be dealing with the
 	// same directory. We therefore add a random suffix
 	// stubExecDir := filepath.Join(unittestExecDir, stubKey+"_"+ipc.NextRandInt63AsHexStr())
 	// stubExecHomeDir := stubExecDir
-	homeDir := filepath.Join(unittestExecDir, stubKey+"_"+rand.NextRandInt63AsHexStr())
+	homeDir := filepath.Join(unittestExecDir, "__execstub_"+stubKey+"_"+rand.NextRandInt63AsHexStr())
 	dataDir := filepath.Join(homeDir, "data")
 	execDir := homeDir
 	if comproto.DiscoveredByHomeBinDir == settings.DiscoveredBy {
@@ -331,11 +343,11 @@ func createStubExecutableInstDirStucture(
 		}
 	}
 	execPath := filepath.Join(execDir, cmdToStub)
-	if err := os.MkdirAll(execDir, 0777); err != nil {
+	if err := os.MkdirAll(execDir, 0770); err != nil {
 		return nil, errors.Wrapf(err, "fail to create exec dir:%s", execDir)
 	}
 
-	if err := os.MkdirAll(dataDir, 0777); err != nil {
+	if err := os.MkdirAll(dataDir, 0770); err != nil {
 		os.RemoveAll(homeDir)
 		return nil, errors.Wrapf(err, "fail to create data dir:%s", dataDir)
 	}
@@ -355,7 +367,7 @@ func createStubExecConfigFile(
 	settings comproto.Settings,
 	testExecutable string,
 	instDirStruct *stubExecInstallationDirStructure,
-) error {
+) (*comproto.CmdConfig, error) {
 	cfg := comproto.CmdConfig{
 		CmdToStub:               cmdToStub,
 		PipeStubber:             "",
@@ -370,7 +382,7 @@ func createStubExecConfigFile(
 		DataDir:                 instDirStruct.dataDir,
 	}
 	if settings.InModStatic() {
-		resp := cmdStub(comproto.StubRequest{})
+		resp := cmdStub(comproto.StubRequest{Key: stubKey, CmdName: cmdToStub, Args: nil}) // static return not dependent of input
 		cfg.ExitCode = resp.ExitCode
 		cfg.TxtStderr = resp.Stderr
 		cfg.TxtStdout = resp.Stdout
@@ -378,12 +390,16 @@ func createStubExecConfigFile(
 			cfg.TxtStderr += resp.InternalErrTxt
 			cfg.ExitCode = 255
 		}
+	} else {
+		stubberPipePath, testProcessHelperPipePath := fifo.NewFifoNamesForIpc(instDirStruct.execPath)
+		cfg.PipeStubber = stubberPipePath
+		cfg.PipeTestHelperProcess = testProcessHelperPipePath
 	}
 	err := cfg.CreateConfigFile(instDirStruct.binDir)
 	if err != nil {
-		return errors.Wrapf(err, "fail to write config to %s", instDirStruct.binDir)
+		return nil, errors.Wrapf(err, "fail to write config to %s", instDirStruct.binDir)
 	}
-	return nil
+	return &cfg, nil
 }
 
 func makeExecStubBeDiscoveredInsteadOfAcualExec(
@@ -451,7 +467,7 @@ func createStubExecFile(
 		return errors.Wrapf(err,
 			"fail to get the exec stub from: %T", execStubProvider)
 	}
-	err = ioutil.WriteFile(stubCommandPath, execStubBytes, 0700) //nolint:gosec
+	err = ioutil.WriteFile(stubCommandPath, execStubBytes, 0770) //nolint:gosec
 	if nil != err {
 		return errors.Wrapf(err,
 			"fail to write stub command: err=%v stub cmd path=%s",

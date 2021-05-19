@@ -20,16 +20,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/congop/execstub/internal/fifo"
 	"github.com/congop/execstub/pkg/comproto"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_newPipeComChannel(t *testing.T) {
 	testExecPath := os.Args[0]
-	timeout :=
-		time.Duration(10 * time.Second)
+	timeout := time.Duration(10 * time.Second)
+	stubberPipePath, testProcessHelperPipePath := fifo.NewFifoNamesForIpc(testExecPath)
 	///
-	comChannel, err := NewStubbingComChannel(testExecPath)
+	comChannel, err := NewStubbingComChannel(stubberPipePath, testProcessHelperPipePath)
 	t.Cleanup(comChannel.CleanUp)
 	///
 	if err != nil {
@@ -38,7 +39,7 @@ func Test_newPipeComChannel(t *testing.T) {
 
 	req := comproto.StubRequest{
 		CmdName: "BlablaExe",
-		Key:     "BlaBla_fff666444333zzz",
+		Key:     "BlaBla_fffzzz_666444333",
 		Args:    []string{"arg1", "argb"},
 	}
 
@@ -63,7 +64,7 @@ func Test_newPipeComChannel(t *testing.T) {
 	response := comproto.ExecOutcome{
 		InternalErrTxt: "errtxt1",
 		ExitCode:       math.MaxInt8,
-		Key:            "BlaBla_fff666444333zzz",
+		Key:            "BlaBla_fffzzz_666444333",
 		Stderr:         "stderr0",
 		Stdout:         "stdout2",
 	}

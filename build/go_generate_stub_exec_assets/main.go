@@ -17,11 +17,13 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"hash/fnv"
 	"io/ioutil"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"text/template"
 	"time"
@@ -60,97 +62,136 @@ func main() {
 
 	genOption := os.Args[1]
 
-	if genOption == "static" {
+	var genFunc func(string) error
+	switch genOption {
 
-		bashExecStubBase64, err := fileAsBase64(pjtRoot, "internal/assets/static/bash_exec_stub.sh")
-		if err != nil {
-			fmt.Printf("%v", err)
-			os.Exit(1)
+	case "static":
+		genFunc = generateStaticGo
+	case "static_com_config":
+		genFunc = genrateCmdConfigAssetsGo
+	case "exe":
+		genFunc = generateExecGo
+	default:
+		genFunc = func(pjtRoot string) error {
+			return errors.Errorf(
+				"Unsupported generate option:%s. Usage: %s static|static_com_config|exe",
+				genOption, os.Args[0])
 		}
-
-		data := map[string]interface{}{
-			"ExecStubBase64": bashExecStubBase64,
-		}
-		assetsTmplPath := "internal/assets/static/assets_tmpl.go"
-		dstPath := "internal/assets/statics.go"
-		err = generateTo(pjtRoot, dstPath, assetsTmplPath, data)
-		if err != nil {
-			fmt.Printf("Fail to generate go code statics.go to: %s, %v", dstPath, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
 	}
-
-	if genOption == "static_com_config" {
-
-		cmdConfigTmplBase64, err := fileAsBase64(pjtRoot,
-			"internal/assets/static/go_testbinary_tubbing_wrapper.config")
-		if err != nil {
-			fmt.Printf("%v", err)
-			os.Exit(1)
-		}
-
-		data := map[string]interface{}{
-			"CmdConfigTmplBase64": cmdConfigTmplBase64,
-		}
-		assetsTmplPath := "internal/assets/static/assets_tmpl_com_config.go"
-		dstPath := "pkg/comproto/cmd_config_assets.go"
-		err = generateTo(pjtRoot, dstPath, assetsTmplPath, data)
-		if err != nil {
-			fmt.Printf("Fail to generate go code statics.go to: %s, %v", dstPath, err)
-			os.Exit(1)
-		}
-
-		os.Exit(0)
+	err = genFunc(pjtRoot)
+	if err != nil {
+		fmt.Printf("%v", err)
+		os.Exit(1)
 	}
-
-	if genOption == "exe" {
-		goCmd(pjtRoot, "build", "./cmd/go_testbinary_tubbing_wrapper")
-		goCmd(pjtRoot, "test", "./cmd/go_testbinary_tubbing_wrapper")
-
-		execStubFile := "./go_testbinary_tubbing_wrapper"
-		execStubBase64, err := fileAsBase64(pjtRoot, execStubFile)
-		if err != nil {
-			fmt.Printf(
-				"Failed to read exec stub file as base64:%s %v",
-				execStubFile, err)
-			os.Exit(1)
-		}
-
-		assetsTmplPath := "internal/assets/exe/assets_tmpl.go"
-		dstPath := "internal/assets/exes.go"
-		data := map[string]interface{}{
-			"ExecStubBase64": execStubBase64,
-		}
-		err = generateTo(pjtRoot, dstPath, assetsTmplPath, data)
-		if err != nil {
-			fmt.Printf("Fail to generate go code exes.go to: %s, %v", dstPath, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	}
-
-	fmt.Fprintf(
-		os.Stderr,
-		"Unsupported generate option:%s. Usage: %s static|static_com_config|exe",
-		genOption, os.Args[0])
-	os.Exit(math.MaxUint8)
-
+	os.Exit(0)
 }
 
-func fileAsBase64(pjtRoot, path string) (fileContentBase64 string, err error) {
+func generateStaticGo(pjtRoot string) error {
+	contentSource := "internal/assets/static/bash_exec_stub.sh"
+	bashExecStubBase64, hash, err := fileAsBase64(pjtRoot, contentSource)
+	if err != nil {
+		return errors.WithMessagef(
+			err,
+			"Failed to read bash_exec_stub.sh file as base64:%s %v",
+			contentSource, err)
+	}
+
+	data := map[string]interface{}{
+		"ExecStubBase64": bashExecStubBase64,
+		"ExecStubHash":   hash,
+	}
+	assetsTmplPath := "internal/assets/static/assets_tmpl.go"
+	dstPath := "internal/assets/statics.go"
+	err = generateTo(pjtRoot, dstPath, assetsTmplPath, data)
+	if err != nil {
+		return errors.WithMessagef(
+			err, "Fail to generate go code statics.go to: %s, %v", dstPath, err)
+	}
+	return nil
+}
+
+func genrateCmdConfigAssetsGo(pjtRoot string) error {
+	contentSource := "internal/assets/static/go_testbinary_tubbing_wrapper.config"
+	cmdConfigTmplBase64, _, err := fileAsBase64(pjtRoot, contentSource)
+	if err != nil {
+		return errors.WithMessagef(
+			err,
+			"Failed to read go_testbinary_stubbing_wrapper.config file as base64:%s %v",
+			contentSource, err)
+	}
+
+	data := map[string]interface{}{
+		"CmdConfigTmplBase64": cmdConfigTmplBase64,
+	}
+	assetsTmplPath := "internal/assets/static/assets_tmpl_com_config.go"
+	dstPath := "pkg/comproto/cmd_config_assets.go"
+	err = generateTo(pjtRoot, dstPath, assetsTmplPath, data)
+	if err != nil {
+		return errors.WithMessagef(
+			err, "Fail to generate go code statics.go to: %s, %v", dstPath, err)
+		// os.Exit(1)
+	}
+
+	// os.Exit(0)
+	return nil
+}
+
+func generateExecGo(pjtRoot string) error {
+	goCmd(pjtRoot, "build", "./cmd/go_testbinary_tubbing_wrapper")
+	goCmd(pjtRoot, "test", "./cmd/go_testbinary_tubbing_wrapper")
+
+	execStubFile := "./go_testbinary_tubbing_wrapper"
+	if runtime.GOOS == "windows" {
+		execStubFile += ".exe"
+	}
+	execStubBase64, hash, err := fileAsBase64(pjtRoot, execStubFile)
+	if err != nil {
+		return errors.WithMessagef(
+			err,
+			"Failed to read exec stub file as base64:%s %v",
+			execStubFile, err)
+	}
+
+	assetsTmplPath := "internal/assets/exe/assets_tmpl.go"
+	dstPath := "internal/assets/exes.go"
+	data := map[string]interface{}{
+		"ExecStubBase64": execStubBase64,
+		"ExecStubHash":   hash,
+	}
+	err = generateTo(pjtRoot, dstPath, assetsTmplPath, data)
+	if err != nil {
+		return errors.WithMessagef(
+			err,
+			"Fail to generate go code exes.go to: %s, %v", dstPath, err)
+	}
+	return nil
+}
+
+func hashFnv(content []byte) (string, error) {
+	hash := fnv.New128a()
+	_, err := hash.Write(content)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", string(hash.Sum(nil))), nil
+}
+
+func fileAsBase64(pjtRoot, path string) (fileContentBase64 string, hash string, err error) {
 	pathActual := filepath.Join(pjtRoot, path)
 	contentBytes, err := ioutil.ReadFile(pathActual)
 	if err != nil {
 		dir, _ := os.Getwd()
-		return "", errors.Wrapf(err,
+		return "", "", errors.Wrapf(err,
 			"error reading as base64: %s \npjtRoot=%s \nwd=%s --> %s \nenv:%s",
 			path, pjtRoot, pathActual, dir, os.Environ())
 	}
-
+	hash, err = hashFnv(contentBytes)
+	if err != nil {
+		return "", "", err
+	}
 	fileContentBase64 = base64.StdEncoding.EncodeToString(contentBytes)
 
-	return fileContentBase64, nil
+	return fileContentBase64, hash, nil
 }
 
 func generateTo(pjtRoot string, dstPath string, tmplPath string, data interface{}) error {
@@ -172,8 +213,11 @@ func generateTo(pjtRoot string, dstPath string, tmplPath string, data interface{
 		"// Code generated by \"go_generate_stub_exec_assets %s\"; DO NOT EDIT\n"+
 			"// generated at %s\n",
 		strings.Join(os.Args[1:], " "), time.Now().Format(time.RFC3339Nano))
+	// not including \n in string to be replaced because \n character representation
+	// dependents on the platform (windows vs. inux / LF vs. CRLF), so that the replacing
+	// may not work depending on which platform the template was saved.
 	tmplContentNoGoBuildIgnore := strings.Replace(
-		string(tmplContent), "// +build ignore\n", generatedHeader, 1)
+		string(tmplContent), "// +build ignore", generatedHeader, 1)
 
 	tmpl, err := template.New("xxx").Parse(tmplContentNoGoBuildIgnore)
 	if err != nil {
@@ -220,8 +264,8 @@ func generateTo(pjtRoot string, dstPath string, tmplPath string, data interface{
 	if eq {
 		fmt.Printf(
 			"Skip update of %s because current content does not difer from"+
-				" new content when ignoring line comments\n",
-			dstPathActual)
+				" new content (%s) when ignoring line comments\n",
+			dstPathActual, dstTmpFileName)
 		return nil
 	}
 

@@ -104,6 +104,9 @@ func (repo StubRequestDirRepo) DeleteAll() error {
 
 // Save saves the given request.
 func (repo StubRequestDirRepo) Save(req StubRequest) error {
+	if err := assertStubKeyHasRightFormat(req.Key, fmt.Sprintf("req-to-save-to-repo:::%#v", req)); err != nil {
+		return err
+	}
 	if err := repo.validateDataDir("Save"); err != nil {
 		return err
 	}
@@ -139,12 +142,14 @@ func (repo StubRequestDirRepo) validateDataDir(action string) error {
 }
 
 func nextStubRequestFileName() string {
+	// ensures names are chronologically ordered in case the cpu is so faster that
+	// 1 millisecond time resolution will result into duplicates name
+	time.Sleep(2 * time.Millisecond)
 	now := time.Now()
 	nowStr := now.Format("2006-01-02-15:04:05.000000000")
 
 	nowStr = strings.ReplaceAll(nowStr, ".", "-")
 	nowStr = strings.ReplaceAll(nowStr, ":", "-")
-	// nowStr = strings.ReplaceAll(nowStr)
 	return fmt.Sprintf("ser_stubrequest_%s_019035%0.6d", nowStr, int(rand.NextUint16()))
 }
 

@@ -16,10 +16,10 @@
 
 ###############################################################################
 # Does install golangci-lint
-# Usage: 
+# Usage:
 #    install-golangci-lint.sh <version>
 #  fb74c2e
-###############################################################################  
+###############################################################################
 
 version=${1}
 #remove starting v
@@ -29,7 +29,7 @@ version_without_v_prefix=${version#v}
 
 GOLANGCI_LINT_PATH=$(go env GOPATH)/bin/golangci-lint
 
-if [[ (-n "${version_without_v_prefix}") ]]; then
+if [[ (-z "${version_without_v_prefix}") ]]; then
     echo "Usage: $0 <version e.g. 1.27.0 or v1.27.0>"
     exit 1
 fi
@@ -45,6 +45,6 @@ fi
 
 echo "Installing golangci-lint ${version}"
 
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${version}
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin "v${version_without_v_prefix}"
 
 ${GOLANGCI_LINT_PATH} --version

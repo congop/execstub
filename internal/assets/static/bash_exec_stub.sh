@@ -14,17 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-isUint8() { 
-    val=$1; val="${val// /}"; val=${val:-xxxnan---}; 
-    if (( val >= 0 &&  val <= 255 )); then 
-        true 
-    else 
+isUint8() {
+    val=$1; val="${val// /}"; val=${val:-xxxnan---};
+    if (( val >= 0 &&  val <= 255 )); then
+        true
+    else
         false
-    fi  
+    fi
 }
 
 strToBase64() {
-  if [[ -n "$1" ]]; then 
+  if [[ -n "$1" ]]; then
     printf "%s" "$1" | base64
   fi
   #printf ""
@@ -33,14 +33,14 @@ strToBase64() {
 echoStubRequestAsBase64CSV() {
   req="$( strToBase64 ${__EXECSTUBBING_STUB_KEY} )"
   req="${req},$( strToBase64 ${__EXECSTUBBING_CMD_TO_STUB} )"
-  
+
   dst=""
   for var in "$@"
   do
     ##varx="${var//[$'\t\r\n']/}"
     if [[ -n $dst ]]; then
       req="${req},$(strToBase64 ${var})"
-    else 
+    else
       #first argument is the destination
       dst="${var}"
     fi
@@ -73,7 +73,7 @@ getThenDoDynamicExecOutcome() {
     printf "%s" "expects 5 records in cvs but got ${oLen}, cvs=${oBase64CSV}" >&2
     exit 255
   fi
-  decodeExits=""  
+  decodeExits=""
   exitCode=$( echo "${oData[0]}" | base64 -d)
   [[ "0" != "$?" ]] && decodeExits="${decodeExits} ExitCode NotBase64='${oData[0]}'"
   internalErr=$( echo "${oData[1]}" | base64 -d)
@@ -89,30 +89,30 @@ getThenDoDynamicExecOutcome() {
     printf "%s" "bad base64 encoding ${decodeExits} csv=${oBase64CSV}" >&2
     exit 255
   fi
-  
+
   if [[ -n "${stderr}" ]]; then
     printf "%s" "${stderr}" 1>&2
-  fi  
+  fi
 
   if [[ -n "${stdout}" ]]; then
     printf "%s" "${stdout}"
   fi
- 
-  if [[ -n "${internalErr}" ]]; then 
+
+  if [[ -n "${internalErr}" ]]; then
     printf "%s" "${internalErr}" 1>&2
     exit 255
   fi
-  
-  if isUint8 "${exitCode}" &>/dev/null; then 
-    exit ${exitCode}; 
-  else 
+
+  if isUint8 "${exitCode}" &>/dev/null; then
+    exit ${exitCode};
+  else
     printf "%s" "Invalid base64 found: '${exitCode}' csv=${oBase64CSV}" 1>&2
-    exit 255 
-  fi;   
+    exit 255
+  fi;
 }
 
 echoTimeoutAndExit() {
-    echo "Timeout" 1>&2 
+    echo "Timeout" 1>&2
     kill -9 $1
 }
 
@@ -131,8 +131,10 @@ export __EXECSTUBBING_DATA_DIR
 # The following is more elaborate to ease debugging while developping
 # - Glob and take the most recent even their should be exactly one named pipe
 # - Keep errors in the variable (|&)
-export __EXECSTUBBING_PIPE_STUBBER="$(ls  -t ${__CMD_ABS_PATH}_stubber_pipe_* |& head -n1)"
-export __EXECSTUBBING_PIPE_TEST_HELPER_PROC="$(ls  -t ${__CMD_ABS_PATH}_testprocesshelper_pipe_* |& head -n1)"
+# export __EXECSTUBBING_PIPE_STUBBER="$(ls  -t ${__CMD_ABS_PATH}_stubber_pipe_* |& head -n1)"
+# export __EXECSTUBBING_PIPE_TEST_HELPER_PROC="$(ls  -t ${__CMD_ABS_PATH}_testprocesshelper_pipe_* |& head -n1)"
+export __EXECSTUBBING_PIPE_STUBBER
+export __EXECSTUBBING_PIPE_TEST_HELPER_PROC
 
 testMethodName="${__EXECSTUBBING_TEST_HELPER_PROCESS_METHOD}"
 testMethodName="${testMethodName// /}"
@@ -140,17 +142,17 @@ testMethodName="${testMethodName// /}"
 
 
 if [[ -n "${testMethodName}" ]]; then
-    
+
     export __EXECSTUBBING_GO_WANT_HELPER_PROCESS=1
     export __EXECSTUBBING_STUB_CMD_CONFIG="${__CMD_CONFIG_PATH}"
     # e.g. /tmp/go-build720053430/b001/execstubbing.test -test.run=TestHelperProcess -- "$@"
     # -test.run takes a regex therefore matching the exact test helper process method
     ${__EXECSTUBBING_UNIT_TEST_EXEC} -test.run="^${__EXECSTUBBING_TEST_HELPER_PROCESS_METHOD}\$" -- "$@"
 
-else 
+else
     staticConfig="${__EXECSTUBBING_STD_OUT}${__EXECSTUBBING_STD_ERR}${__EXECSTUBBING_EXIT_CODE}"
     staticConfig="${staticConfig// /}"
-    
+
     if [[ -n "${staticConfig}" ]]; then
         export nextStubRequestFilePath
         reqDstFilePath="$(nextStubRequestFilePath)"
@@ -165,13 +167,13 @@ else
         exitCode="${__EXECSTUBBING_EXIT_CODE}"
         exitCode="${exitCode// /}"
 
-        if isUint8 "${exitCode}" &>/dev/null; then 
-            exit ${exitCode}; 
-        else 
+        if isUint8 "${exitCode}" &>/dev/null; then
+            exit ${exitCode};
+        else
             printf "%s" "Bad exit code ${__EXECSTUBBING_EXIT_CODE} (trimmed:${exitCode})" | cat 1>&2
-            exit 255 
+            exit 255
         fi;
-    else 
+    else
         echoStubRequestAsBase64CSV "${__EXECSTUBBING_PIPE_STUBBER}" "$@"
         getThenDoDynamicExecOutcome
     fi

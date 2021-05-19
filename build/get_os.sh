@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 # Copyright 2020 The Execstub Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,24 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-this_cmd="$0"
-base_dir="$(dirname $this_cmd)"
-source "$base_dir/get_os.sh"
-os_name="$(get_os_name)"
-echo "os_name=$os_name  --- $base_dir  --- $this_cmd"
-
-
-# Check gofmt
-echo "==> Checking that code complies with gofmt requirements..."
-gofmt_files=$(find . -name '*.go' | xargs gofmt -l -s)
-if [[ -n ${gofmt_files} ]]; then
-    echo 'gofmt needs running on the following files:'
-    echo "${gofmt_files}"
-    if [[ "$os_name" == "linux" ]]; then
-        exit 1
-    else
-        echo "Ignoring formating issue because of os ($os_name)"
-    fi
-fi
-
-exit 0
+get_os_name() {
+  local os_name
+  os_name="$(uname -o | tr '[:upper:]' '[:lower:]')"
+  case "$os_name" in
+  *linux*)
+    os_name="linux"
+    ;;
+  *darwin*)
+    os_name="osx"
+    ;;
+  *msys*)
+    os_name="windows"
+    ;;
+  *)
+    os_name="sot_supported_$os_name"
+    ;;
+  esac
+  printf "%s" "$os_name"
+}

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 
@@ -31,16 +32,25 @@ func isLineCommentOrEmpty(line string) bool {
 
 // equalIgnoreLineComment returns true both are either empty or line comment
 // or are equal.
-func equalIgnoreLineComment(_line1, _line2 string) bool {
+func equalIgnoreLineComment(_line1, _line2 string) (eq bool, l1Ignored bool, l2Ignored bool) {
 	l1 := strings.TrimSpace(_line1)
 	l2 := strings.TrimSpace(_line2)
-	if isLineCommentOrEmpty(l1) && isLineCommentOrEmpty(l2) {
-		return true
+	// comments and blankline are can be compared
+	l1CommentOrEmpty := isLineCommentOrEmpty(l1)
+	l2CommentOrEmpty := isLineCommentOrEmpty(l2)
+	if l1CommentOrEmpty && l2CommentOrEmpty {
+		return true, false, false
 	}
+
+	// we dot not compare actual lines with comment or empty line
+	if l1CommentOrEmpty != l2CommentOrEmpty {
+		return false, l1CommentOrEmpty, l2CommentOrEmpty
+	}
+
 	if len(l1) != len(l2) {
-		return false
+		return false, false, false
 	}
-	return l1 == l2
+	return l1 == l2, false, false
 }
 
 // EqualIgnoreLineCommentReader return true if the content delivered by the
@@ -48,28 +58,54 @@ func equalIgnoreLineComment(_line1, _line2 string) bool {
 // Note that some empty line may be ignored too.
 func EqualIgnoreLineCommentReader(src1, src2 io.Reader) bool {
 	rsrc1 := bufio.NewScanner(src1)
+	buf1 := make([]byte, 32*1024*1024)
+	rsrc1.Buffer(buf1, len(buf1))
 	rsrc2 := bufio.NewScanner(src2)
-
+	buf2 := make([]byte, 32*1024*1024)
+	rsrc2.Buffer(buf2, len(buf2))
+	var line1, line2 string
+	l1ScanNext := true
+	l2ScanNext := true
+	hasLineInSrc1 := true
+	hasLineInSrc2 := true
 	for {
 		// we need to scan until both sources are done because the remaining
 		// lines in the longer source may all be empty or line comments
-		line1 := ""
-		hasLineInSrc1 := rsrc1.Scan()
-		if hasLineInSrc1 {
-			line1 = rsrc1.Text()
+		if l1ScanNext {
+			line1 = ""
+			hasLineInSrc1 = rsrc1.Scan()
+			if hasLineInSrc1 {
+				line1 = rsrc1.Text()
+			}
 		}
 
-		line2 := ""
-		hasLineInSrc2 := rsrc2.Scan()
-		if hasLineInSrc2 {
-			line2 = rsrc2.Text()
+		if l2ScanNext {
+			line2 = ""
+			hasLineInSrc2 = rsrc2.Scan()
+			if hasLineInSrc2 {
+				line2 = rsrc2.Text()
+			}
 		}
-		if !equalIgnoreLineComment(line1, line2) {
+
+		// It makes no sens to compare empty or comment line with line with code
+		// we set the algorithm to skip the empty or blank line
+		eq, l1Ignored, l2Ignored := equalIgnoreLineComment(line1, line2)
+
+		if !eq && !l1Ignored && !l2Ignored {
 			return false
 		}
+		if l1Ignored != l2Ignored {
+			l1ScanNext, l2ScanNext = l1Ignored, l2Ignored
+		} else {
+			l1ScanNext, l2ScanNext = true, true
+		}
+
 		if !hasLineInSrc1 && !hasLineInSrc2 {
 			break
 		}
+	}
+	if e1, e2 := rsrc1.Err(), rsrc2.Err(); (e1 != nil && e1 != bufio.ErrTooLong) || (e2 != nil && e2 != bufio.ErrTooLong) {
+		log.Fatalf("rsrc1.Err()=%v, rsrc2.Err()=%v\n", e1, e2)
 	}
 	return true
 }

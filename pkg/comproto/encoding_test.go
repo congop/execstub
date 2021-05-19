@@ -88,15 +88,16 @@ func TestStubbingExecEncodeDecode(t *testing.T) {
 			args: args{
 				req: StubRequest{
 					Args: []string{"arg1", "argb", "arg3"},
-					Key:  "k1",
+					Key:  "k_1",
 				},
 			},
 		},
 		{
-			name: "Should be able to encode decode null stubrequest",
+			name: "Should not be able to encode decode null stubrequest",
 			args: args{
 				req: StubRequest{},
 			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -104,8 +105,10 @@ func TestStubbingExecEncodeDecode(t *testing.T) {
 			var buf bytes.Buffer
 			encoderFunc := StubRequestEncoderFunc(&buf)
 			erre := encoderFunc(&tt.args.req)
-			if erre != nil {
-				t.Errorf("could not encode stubbing request [%#v]: %v", tt.args.req, erre)
+			if (erre != nil) != tt.wantErr {
+				t.Errorf(
+					"unexpected error status while encoding stubbing request [%#v]: wantError=%t error=%v",
+					tt.args.req, tt.wantErr, erre)
 				return
 			}
 			bufStr := buf.String()
@@ -113,13 +116,15 @@ func TestStubbingExecEncodeDecode(t *testing.T) {
 			buf.WriteString(bufStr)
 			got, errDec := StubRequestDecoderFunc(&buf)
 			if (errDec != nil) != tt.wantErr {
-				t.Errorf("Could not decode stubbing request= %v, wantErr %v", errDec, tt.wantErr)
+				t.Errorf("unexpected error status while decoding stubbing request: error=%v, wantErr %v", errDec, tt.wantErr)
 				return
 			}
-			wantReq := tt.args.req
-			if !reflect.DeepEqual(*got, wantReq) {
-				t.Errorf("ExecOutcomeDecoderFunc() \ngot = %#v, \nwant= %#v buf=%s",
-					*got, wantReq, bufStr)
+			if errDec == nil {
+				wantReq := tt.args.req
+				if !reflect.DeepEqual(*got, wantReq) {
+					t.Errorf("ExecOutcomeDecoderFunc() \ngot = %#v, \nwant= %#v buf=%s",
+						*got, wantReq, bufStr)
+				}
 			}
 		})
 	}

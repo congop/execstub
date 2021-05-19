@@ -23,7 +23,7 @@ import (
 	"syscall"
 	"time"
 
-	fifo2 "github.com/containerd/fifo"
+	"github.com/congop/execstub/internal/fifo"
 	"github.com/pkg/errors"
 )
 
@@ -185,11 +185,17 @@ func EffectuateDynamicOutcome(
 	stdout io.Writer,
 
 ) (exitCode uint8) {
-
-	err := WriteStubRequestToNamedPipe(pipePathStubber, req, timeout)
+	err := assertStubKeyHasRightFormat(req.Key, fmt.Sprintf("req-to-effectuate-dynamically:::%#v", req))
 	if err != nil {
 		fmt.Fprintf(stderr,
-			"Error while writing stubbing request to stubber named pipe[%s]running stub:%v // %#v",
+			"bad Stub Key while writing stubbing request to stubber named pipe[%s] running stub:%v",
+			pipePathStubber, err)
+		return 66
+	}
+	err = WriteStubRequestToNamedPipe(pipePathStubber, req, timeout)
+	if err != nil {
+		fmt.Fprintf(stderr,
+			"error while writing stubbing request to stubber named pipe[%s] running stub:%v // %#v",
 			pipePathStubber, err, err)
 		return math.MaxUint8
 	}
@@ -227,8 +233,8 @@ func ReadStubbingResponseFromNamedPipe(pipePath string, timeout time.Duration) (
 		// go-func because both fifo2.OpenFifo(..) and dec.Decode(..) may block
 		ctx := context.Background()
 		ctx, cancel := context.WithTimeout(ctx, timeout)
-		reader, err := fifo2.OpenFifo(ctx, pipePath, syscall.O_RDONLY, os.ModeNamedPipe)
-		cancel()
+		defer cancel()
+		reader, err := fifo.OpenFifo(ctx, pipePath, syscall.O_RDONLY, os.ModeNamedPipe)
 		if err != nil {
 			outcomeChan <- errors.Wrapf(err, "error getting reader for named pipe[%s]: err:%v", pipePath, err)
 			return
@@ -238,6 +244,7 @@ func ReadStubbingResponseFromNamedPipe(pipePath string, timeout time.Duration) (
 
 		if err != nil {
 			outcomeChan <- errors.Wrapf(err, "Error decoding data as stubbing outcome from named pipe[%s]: err=%#v", pipePath, err)
+			return
 		}
 		outcomeChan <- *outcome
 	}()
@@ -268,10 +275,13 @@ func ReadStubbingResponseFromNamedPipe(pipePath string, timeout time.Duration) (
 func WriteStubRequestToNamedPipe(
 	pipePath string, stubReq StubRequest, timeout time.Duration,
 ) error {
+	if err := assertStubKeyHasRightFormat(stubReq.Key, stubReq.String()); err != nil {
+		return err
+	}
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, timeout)
-	writer, err := fifo2.OpenFifo(ctx, pipePath, syscall.O_WRONLY, os.ModeNamedPipe)
-	cancel()
+	defer cancel()
+	writer, err := fifo.OpenFifo(ctx, pipePath, syscall.O_WRONLY, os.ModeNamedPipe)
 	if err != nil {
 		return errors.Wrapf(err,
 			"Error getting writer for named pipe[%s]: err:%v", pipePath, err)

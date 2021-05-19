@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	rt "github.com/congop/execstub/internal/runtime"
 	"github.com/congop/execstub/pkg/comproto"
 )
 
@@ -35,8 +36,8 @@ func Example_dynamicDefaultSettings() {
 	}
 	recStubFunc, reqStore := comproto.RecordingExecutions(
 		comproto.AdaptOutcomeToCmdStub(&staticOutcome))
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "SuperExe", comproto.Settings{})
-	ifNotEqPanic(nil, err, "fail to setip stub")
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("SuperExe"), comproto.Settings{})
+	ifNotEqPanic(nil, err, "fail to setup stub")
 
 	cmd := exec.Command("SuperExe", "arg1", "argb")
 	var bufStderr, bufStdout bytes.Buffer
@@ -51,7 +52,7 @@ func Example_dynamicDefaultSettings() {
 	gotRequests := *reqStore
 	wanRequets := []comproto.StubRequest{
 		{
-			CmdName: "SuperExe", Args: []string{"arg1", "argb"}, Key: key,
+			CmdName: rt.EnsureHasExecExt("SuperExe"), Args: []string{"arg1", "argb"}, Key: key,
 		},
 	}
 	ifNotEqPanic(wanRequets, gotRequests, "unexpected stub requests")
@@ -89,7 +90,7 @@ func Example_dynamicWithTestHelperProc() {
 	recStubFunc, reqStore := comproto.RecordingExecutions(
 		comproto.AdaptOutcomeToCmdStub(&staticOutcome))
 	setting := comproto.Settings{TestHelperProcessMethodName: "TestHelperProcExample_dynamic"}
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "docker", setting)
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("docker"), setting)
 	ifNotEqPanic(nil, err, "fail to setip stub")
 
 	// args := []string{"image", "ls", "--format", "\"{{.Repository}}:{{.Tag}}\""}
@@ -107,7 +108,7 @@ func Example_dynamicWithTestHelperProc() {
 	gotRequests := *reqStore
 	wanRequets := []comproto.StubRequest{
 		{
-			CmdName: "docker", Args: args, Key: key,
+			CmdName: rt.EnsureHasExecExt("docker"), Args: args, Key: key,
 		},
 	}
 	ifNotEqPanic(wanRequets, gotRequests, "unexpected stub requests")
@@ -136,11 +137,12 @@ func Example_static() {
 	recStubFunc, reqStore := comproto.RecordingExecutions(
 		comproto.AdaptOutcomeToCmdStub(&staticOutcome))
 	settings := comproto.Settings{Mode: comproto.StubbingModeStatic}
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "SuperExe", settings)
-	ifNotEqPanic(nil, err, "fail to setip stub")
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("SuperExe"), settings)
+	ifNotEqPanic(nil, err, "fail to setup stub")
 	ifNotEqPanic(
-		[]comproto.StubRequest{{}}, *reqStore,
-		"Static mod evaluate StubFunc at setup with nil arg")
+		[]comproto.StubRequest{{Key: key, CmdName: rt.EnsureHasExecExt("SuperExe"), Args: nil}},
+		*reqStore,
+		"Static mod evaluate StubFunc at setup with a stubrequest havin nil args")
 	*reqStore = (*reqStore)[:0]
 
 	cmd := exec.Command("SuperExe", "arg1", "argb")
@@ -157,7 +159,7 @@ func Example_static() {
 	ifNotEqPanic(nil, err, "fail to find all persisted stub request")
 	wanRequets := []comproto.StubRequest{
 		{
-			CmdName: "SuperExe", Args: []string{"arg1", "argb"}, Key: key,
+			CmdName: rt.EnsureHasExecExt("SuperExe"), Args: []string{"arg1", "argb"}, Key: key,
 		},
 	}
 	ifNotEqPanic(wanRequets, *gotRequests, "unexpected stub requests")
@@ -201,11 +203,12 @@ func Example_staticWithTestHelperProc() {
 		Mode:                        comproto.StubbingModeStatic,
 		TestHelperProcessMethodName: "TestHelperProcExample_static",
 	}
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "SuperExe", settings)
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("SuperExe"), settings)
 	ifNotEqPanic(nil, err, "fail to setip stub")
 	ifNotEqPanic(
-		[]comproto.StubRequest{{}}, *reqStore,
-		"Static mod evaluate StubFunc at setup with nil arg")
+		[]comproto.StubRequest{{Key: key, CmdName: rt.EnsureHasExecExt("SuperExe"), Args: nil}},
+		*reqStore,
+		"Static mod evaluate StubFunc at setup with stubrequest having nil args")
 	*reqStore = (*reqStore)[:0]
 
 	cmd := exec.Command("SuperExe", "arg1", "argb")
@@ -222,7 +225,7 @@ func Example_staticWithTestHelperProc() {
 	ifNotEqPanic(nil, err, "fail to find all persisted stub request")
 	wanRequets := []comproto.StubRequest{
 		{
-			CmdName: "SuperExe", Args: []string{"arg1", "argb"}, Key: key,
+			CmdName: rt.EnsureHasExecExt("SuperExe"), Args: []string{"arg1", "argb"}, Key: key,
 		},
 	}
 	ifNotEqPanic(wanRequets, *gotRequests, "unexpected stub requests")
@@ -256,9 +259,9 @@ func Example_homeBinDir() {
 			EnvHomeKey: "JAVA_HOME",
 			BinDirs:    []string{"bin"},
 		},
-		ExecType: comproto.ExecTypeBash,
+		ExecType: comproto.ExecTypeExe,
 	}
-	key, err := stubber.WhenExecDoStubFunc(recStubFunc, "java", settings)
+	key, err := stubber.WhenExecDoStubFunc(recStubFunc, rt.EnsureHasExecExt("java"), settings)
 	ifNotEqPanic(nil, err, "fail to setip stub")
 
 	javaCmd := os.ExpandEnv("${JAVA_HOME}/bin/java")
@@ -275,7 +278,7 @@ func Example_homeBinDir() {
 
 	wantRequests := []comproto.StubRequest{
 		{
-			CmdName: "java", Args: []string{"-version"}, Key: key,
+			CmdName: rt.EnsureHasExecExt("java"), Args: []string{"-version"}, Key: key,
 		},
 	}
 	ifNotEqPanic(wantRequests, *reqStore, "unexpected stub requests")

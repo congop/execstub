@@ -24,7 +24,7 @@ all: go-generate go-build go-test go-fmtcheck go-vet golangci-lint-run check-lic
 all-and-cover: all go-cover-with-race-check
 	#
 
-go-generate: 
+go-generate:
 	$(GO) generate ./...
 
 go-build:
@@ -52,11 +52,12 @@ go-cover-with-race-check-show-html: go-cover-with-race-check
 godoc-at-port9999:
 	$(GOPATH)/bin/godoc -http=localhost:9999 -links=true -notes=TODO
 
+#-E golint
 golangci-lint-run:
-	bash "$(CURDIR)/build/install-golangci-lint.sh"
+	bash -c "$(CURDIR)/build/install-golangci-lint.sh 1.40.1"
 	$(GOPATH)/bin/golangci-lint -E misspell -E dupl \
 		-E gosec -E stylecheck -E gocritic -E nakedret -E gocyclo \
-		-E golint -E goconst -E gocognit -E prealloc -E unparam \
+		-E revive -E goconst -E gocognit -E prealloc -E unparam \
 		--max-issues-per-linter 200 --max-same-issues 20 \
 		-v run
 

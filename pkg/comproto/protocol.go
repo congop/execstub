@@ -14,6 +14,8 @@
 
 package comproto
 
+import "fmt"
+
 // StubRequest holds data send to a stubber through a ComChannel to request stubbing
 type StubRequest struct {
 	// Key identifies the stubbing setup
@@ -44,6 +46,10 @@ type ExecOutcome struct {
 	InternalErrTxt string
 }
 
+func (req StubRequest) String() string {
+	return fmt.Sprintf("StubRequest[Key=%s, CmdName=%s, Args=%v]", req.Key, req.CmdName, req.Args)
+}
+
 // StderrAvail return true if Stderr is available (not "") and false otherwise.
 func (o ExecOutcome) StderrAvail() bool {
 	return o.Stderr != ""
@@ -57,4 +63,13 @@ func (o ExecOutcome) StdoutAvail() bool {
 // InternalErrTxtAvail return true if InternalErrTxt is available (not "") and false otherwise.
 func (o ExecOutcome) InternalErrTxtAvail() bool {
 	return o.InternalErrTxt != ""
+}
+
+func StopOperationRequest() *StubRequest {
+	req := StubRequest{Key: "0_0"}
+	return &req
+}
+
+func (req StubRequest) IsRequestingStop() bool {
+	return req.Key == "0_0"
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	rt "github.com/congop/execstub/internal/runtime"
 	comproto "github.com/congop/execstub/pkg/comproto"
 )
 
@@ -72,7 +73,7 @@ func TestHelperProcessStatic(t *testing.T) {
 	comproto.EffectuateConfiguredExecOutcome(nil)
 }
 
-func Test_stubExecutableWith(t *testing.T) {
+func Test_stubExecutableWith(t *testing.T) { // nolint:gocognit
 
 	var execStubber = ExecStubber{cmdStabStore: make(map[string]*cmdStubbingSpec)}
 	t.Cleanup(execStubber.CleanUp)
@@ -95,7 +96,7 @@ func Test_stubExecutableWith(t *testing.T) {
 			name: "Exec outcome must be the return of stub commd",
 			args: args{
 				cmdArgs:   [][]string{{"args1", "--argsb"}, nil},
-				cmdToStub: "BlaBlaExe",
+				cmdToStub: rt.EnsureHasExecExt("BlaBlaExe"),
 				cmdStub: func(sreq comproto.StubRequest) *comproto.ExecOutcome {
 					t.Logf("Stubbing CMD: %v", sreq)
 					// return "OutOk", "ErrOk", 0, nil
@@ -116,7 +117,7 @@ func Test_stubExecutableWith(t *testing.T) {
 			name: "Internal stubbing error should be mapped to non-successful exit code and err-txt send to std-err",
 			args: args{
 				cmdArgs:   [][]string{{}, {"a1", "b1", "c1"}},
-				cmdToStub: "BlaBlaExe",
+				cmdToStub: rt.EnsureHasExecExt("BlaBlaExe"),
 				cmdStub: func(sreq comproto.StubRequest) *comproto.ExecOutcome {
 					t.Logf("Stubbing CMD: %v", sreq)
 					return &comproto.ExecOutcome{
@@ -166,6 +167,9 @@ func Test_stubExecutableWith(t *testing.T) {
 
 		for _, setExecTypeFunc := range []func(){settings.ExecTypeBash, settings.ExecTypeExe} {
 			setExecTypeFunc()
+			if settings.IsUsingExecTypeBash() && rt.IsWindows() {
+				continue
+			}
 			for _, setModeFunc := range setModeFuncs {
 				setModeFunc()
 				for _, tt := range tests {
@@ -281,7 +285,7 @@ func Test_NoReEntrantLockingSoThatStubberCanBeReused(t *testing.T) {
 			// settings := comproto.SettingsDynaStubCmdDiscoveredByPath()
 
 			stubFunc, reqs := comproto.RecordingExecutions(tt.args.stubFunc)
-			_, err := stubber.WhenExecDoStubFunc(stubFunc, "MySuperCmd", *settings)
+			_, err := stubber.WhenExecDoStubFunc(stubFunc, rt.EnsureHasExecExt("MySuperCmd"), *settings)
 			if err != nil {
 				t.Errorf("Failed  to mock cmd MySuperCmd: %v", err)
 				return

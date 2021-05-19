@@ -59,17 +59,40 @@ func Test_hasDiffWhenIgnroingLineComments(t *testing.T) {
 			},
 			want: true,
 		},
-
 		{
 			name: "multiline are equal if their actual diff are line comments",
 			args: args{
-				c1: ` // line1 
+				c1: ` // line1
 						lin2
-						
+
 						//l3
 						lin4
 						`,
-				c2: ` // line1 
+				c2: ` // line1
+						lin2
+
+						//l3
+						lin4
+						// comment1
+						`,
+			},
+			want: true,
+		},
+		{
+			name: "multiline are equal even extra blank or comment line",
+			args: args{
+				c1: ` // line1
+						// extra commen 1 followed by extra line
+
+						lin2
+
+						//l3
+
+
+
+						lin4
+						`,
+				c2: ` // line1
 						lin2
 
 						//l3
@@ -138,7 +161,7 @@ func TestHasLinewiseDiffWhenIgnroingLineCommentsWithPath(t *testing.T) {
 			args: args{
 				c1: `// line1
 						//lineb
-								
+
 						//line 3
 						`,
 				c2: "",

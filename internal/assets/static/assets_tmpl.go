@@ -18,6 +18,13 @@ package assets
 
 import "encoding/base64"
 
+// ExecStubExeHash returns the hash of the bash script that can be use to stub an executable.
+// This is here mainly to aid detect changes without having to check be binary in base64.
+func ExecStubBashScriptHash() string {
+	hash := "{{ .ExecStubHash }}"
+	return hash
+}
+
 // ExecStubBashScript return a bash script that can be used to stub an executable.
 func ExecStubBashScript() (script []byte, err error) {
 	execStubBase64 := "{{ .ExecStubBase64 }}"

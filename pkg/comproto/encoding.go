@@ -167,6 +167,9 @@ func StubRequestDecoderFunc(reader io.Reader) (*StubRequest, error) {
 
 func stubRequestEncoderFuncBase64CVS(writer io.Writer) func(req *StubRequest) error {
 	return func(req *StubRequest) error {
+		if err := assertStubKeyHasRightFormat(req.Key, fmt.Sprintf("req-to-base64-cvs:%#v", req)); err != nil {
+			return err
+		}
 		writerCSV := csv.NewWriter(writer)
 		rec := make([]string, 0, 2+len(req.Args))
 		rec = append(rec, strToBase64(req.Key))
@@ -196,6 +199,10 @@ func stubRequestDecoderFuncBase64CVS(reader io.Reader) (*StubRequest, error) {
 			err,
 			"while Key <- base64ToStrTo('%s') records=%v",
 			rec[0], rec)
+		return nil, err
+	}
+	err = assertStubKeyHasRightFormat(req.Key, fmt.Sprintf("req-from-base64csv=%#v", rec))
+	if err != nil {
 		return nil, err
 	}
 	req.CmdName, err = base64ToStr(rec[1])
